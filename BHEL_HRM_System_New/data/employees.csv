@@ -1,0 +1,2 @@
+employee_id,first_name,last_name,ic_passport,email,phone,department,position,date_joined,is_active
+1,Ahmad,Ibrahim,990101-14-1234,ahmad@bhel.com,+60123456789,Engineering,Software Developer,2024-01-15,1

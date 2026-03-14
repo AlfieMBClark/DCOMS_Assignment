@@ -1,0 +1,7 @@
+log_id,user_id,username,role,action,target_table,target_id,details,timestamp
+1,0,SYSTEM,SYSTEM,SERVER_START,,0,Server started on port 1099,2026-03-14T12:55:05.233626500
+2,1,admin,ADMIN,LOGIN,users,1,User logged in,2026-03-14T12:56:41.711148100
+3,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-14T12:57:11.111323500
+4,2,hr1,HR,GENERATE_REPORT,employees,1,Yearly report for Ahmad Ibrahim (2026),2026-03-14T12:57:26.748789400
+5,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-14T12:58:46.583710400
+6,1,admin,ADMIN,LOGOUT,users,1,User logged out,2026-03-14T12:58:48.900251200
