@@ -14,7 +14,7 @@ public class AddServer {
             Naming.rebind("rmi://localhost/AddService", obj);
             
             SubInterface obj2 = new SubImplementation();
-            Naming.rebind("rmi://localhost/Subervice", obj2);
+            Naming.rebind("rmi://localhost/SubService", obj2);
 
             System.out.println("RMI Server is running...");
         } catch (Exception e) {
