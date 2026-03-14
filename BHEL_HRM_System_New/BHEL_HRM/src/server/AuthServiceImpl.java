@@ -1,6 +1,7 @@
 package server;
 
 import common.interfaces.AuthService;
+import common.interfaces.DatabaseService;
 import common.models.UserAccount;
 import utils.PasswordHasher;
 import java.rmi.RemoteException;
@@ -14,18 +15,19 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Implementation of the Authentication Service.
  * Manages login/logout and session tokens.
+ * Delegates data operations to remote DatabaseService.
  * Supports SSL/TLS when socket factories are provided.
  */
 public class AuthServiceImpl extends UnicastRemoteObject implements AuthService {
 
-    private final CSVDataStore dataStore;
+    private final DatabaseService dbService;
     private final AuditLogger auditLogger;
     private final Map<String, UserAccount> activeSessions = new ConcurrentHashMap<>();
 
-    public AuthServiceImpl(CSVDataStore dataStore, AuditLogger auditLogger,
+    public AuthServiceImpl(DatabaseService dbService, AuditLogger auditLogger,
                            int port, RMIClientSocketFactory csf, RMIServerSocketFactory ssf) throws RemoteException {
         super(port, csf, ssf);
-        this.dataStore = dataStore;
+        this.dbService = dbService;
         this.auditLogger = auditLogger;
     }
 
@@ -33,7 +35,7 @@ public class AuthServiceImpl extends UnicastRemoteObject implements AuthService 
     public String login(String username, String password) throws RemoteException {
         System.out.println("[AUTH] Login attempt: " + username);
 
-        UserAccount user = dataStore.getUserByUsername(username);
+        UserAccount user = dbService.getUserByUsername(username);
         if (user == null) {
             auditLogger.logFailedLogin(username);
             return null;
@@ -75,13 +77,13 @@ public class AuthServiceImpl extends UnicastRemoteObject implements AuthService 
         UserAccount user = activeSessions.get(sessionToken);
         if (user == null) return false;
 
-        UserAccount stored = dataStore.getUserById(user.getUserId());
+        UserAccount stored = dbService.getUserById(user.getUserId());
         if (stored == null || !PasswordHasher.verifyPassword(oldPassword, stored.getPasswordHash())) {
             return false;
         }
 
         stored.setPasswordHash(PasswordHasher.hashPassword(newPassword));
-        boolean success = dataStore.updateUser(stored);
+        boolean success = dbService.updateUser(stored);
         if (success) {
             activeSessions.put(sessionToken, stored);
             auditLogger.log(user, "CHANGE_PASSWORD", "users", user.getUserId(), "Password changed");

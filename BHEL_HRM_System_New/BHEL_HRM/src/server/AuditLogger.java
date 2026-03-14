@@ -1,25 +1,36 @@
 package server;
 
+import common.interfaces.DatabaseService;
 import common.models.UserAccount;
+import java.rmi.RemoteException;
 
 /**
  * Audit logging utility.
- * Wraps CSVDataStore to provide convenient audit logging methods.
+ * Delegates database operations to remote DatabaseService for 3-tier architecture.
+ * Provides convenient high-level logging methods.
  */
 public class AuditLogger {
 
-    private final CSVDataStore dataStore;
+    private final DatabaseService dbService;
 
-    public AuditLogger(CSVDataStore dataStore) {
-        this.dataStore = dataStore;
+    public AuditLogger(DatabaseService dbService) {
+        this.dbService = dbService;
     }
 
     public void log(UserAccount user, String action, String targetTable, int targetId, String details) {
         if (user != null) {
-            dataStore.addAuditLog(user.getUserId(), user.getUsername(), user.getRole(),
+            try {
+                dbService.logAudit(user.getUserId(), user.getUsername(), user.getRole(),
                                   action, targetTable, targetId, details);
+            } catch (RemoteException e) {
+                System.err.println("[AUDIT ERROR] Failed to log action: " + e.getMessage());
+            }
         } else {
-            dataStore.addAuditLog(0, "SYSTEM", "SYSTEM", action, targetTable, targetId, details);
+            try {
+                dbService.logAudit(0, "SYSTEM", "SYSTEM", action, targetTable, targetId, details);
+            } catch (RemoteException e) {
+                System.err.println("[AUDIT ERROR] Failed to log action: " + e.getMessage());
+            }
         }
         System.out.println("[AUDIT] " + (user != null ? user.getUsername() : "SYSTEM") + " - " + action + ": " + details);
     }
@@ -33,8 +44,20 @@ public class AuditLogger {
     }
 
     public void logFailedLogin(String username) {
-        dataStore.addAuditLog(0, username, "UNKNOWN", "FAILED_LOGIN", "users", 0,
-                              "Failed login attempt for: " + username);
+        try {
+            dbService.logAudit(0, username, "UNKNOWN", "FAILED_LOGIN", "users", 0, "Failed login attempt for: " + username);
+        } catch (RemoteException e) {
+            System.err.println("[AUDIT ERROR] Failed to log failed login: " + e.getMessage());
+        }
         System.out.println("[AUDIT] FAILED LOGIN: " + username);
+    }
+
+    public void logServerStart(int port, boolean sslEnabled) {
+        try {
+            dbService.logAudit(0, "SYSTEM", "SYSTEM", "SERVER_START", null, 0,
+                            "Application server started on port " + port + (sslEnabled ? " (SSL)" : ""));
+        } catch (RemoteException e) {
+            System.err.println("[AUDIT ERROR] Failed to log server start: " + e.getMessage());
+        }
     }
 }

@@ -1,6 +1,7 @@
 package server;
 
 import common.interfaces.HRMService;
+import common.interfaces.DatabaseService;
 import common.models.*;
 import utils.ValidationUtil;
 import utils.PasswordHasher;
@@ -14,20 +15,21 @@ import java.util.List;
 
 /**
  * Implementation of the HRM Service.
- * All write operations are synchronized for thread-safe concurrent access.
+ * Delegates data operations to remote DatabaseService.
+ * All authenticated operations are logged through AuditLogger.
  * Supports SSL/TLS when socket factories are provided.
  */
 public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
 
-    private final CSVDataStore dataStore;
+    private final DatabaseService dbService;
     private final AuthServiceImpl authService;
     private final AuditLogger auditLogger;
 
-    public HRMServiceImpl(CSVDataStore dataStore, AuthServiceImpl authService,
+    public HRMServiceImpl(DatabaseService dbService, AuthServiceImpl authService,
                           AuditLogger auditLogger, int port,
                           RMIClientSocketFactory csf, RMIServerSocketFactory ssf) throws RemoteException {
         super(port, csf, ssf);
-        this.dataStore = dataStore;
+        this.dbService = dbService;
         this.authService = authService;
         this.auditLogger = auditLogger;
     }
@@ -55,7 +57,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         UserAccount user = requireAuth(sessionToken);
         if (user.getRole().equals("EMPLOYEE") && user.getEmployeeId() != employeeId)
             throw new RemoteException("Forbidden: Cannot view another employee's profile");
-        Employee emp = dataStore.getEmployee(employeeId);
+        Employee emp = dbService.getEmployee(employeeId);
         if (emp == null) throw new RemoteException("Employee not found: " + employeeId);
         return emp;
     }
@@ -71,7 +73,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         if ("phone".equals(fieldName) && !ValidationUtil.validatePhone(newValue))
             throw new RemoteException("Invalid phone format");
 
-        int requestId = dataStore.addProfileUpdateRequest(employeeId, fieldName, oldValue, newValue);
+        int requestId = dbService.addProfileUpdateRequest(employeeId, fieldName, oldValue, newValue);
         auditLogger.log(user, "REQUEST_PROFILE_UPDATE", "employees", employeeId,
             fieldName + ": '" + oldValue + "' -> '" + newValue + "'");
         return true;
@@ -82,7 +84,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         UserAccount user = requireAuth(sessionToken);
         if (user.getRole().equals("EMPLOYEE") && user.getEmployeeId() != employeeId)
             throw new RemoteException("Forbidden");
-        return dataStore.getFamilyMembers(employeeId);
+        return dbService.getFamilyMembers(employeeId);
     }
 
     @Override
@@ -95,7 +97,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         if (!ValidationUtil.isNotEmpty(member.getRelationship()))
             throw new RemoteException("Relationship is required");
 
-        int id = dataStore.addFamilyMember(member);
+        int id = dbService.addFamilyMember(member);
         auditLogger.log(user, "ADD_FAMILY_MEMBER", "family_members", id,
             member.getName() + " (" + member.getRelationship() + ") for emp#" + member.getEmployeeId());
         return true;
@@ -106,7 +108,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         UserAccount user = requireAuth(sessionToken);
         if (user.getRole().equals("EMPLOYEE") && user.getEmployeeId() != member.getEmployeeId())
             throw new RemoteException("Forbidden");
-        boolean success = dataStore.updateFamilyMember(member);
+        boolean success = dbService.updateFamilyMember(member);
         if (success) auditLogger.log(user, "UPDATE_FAMILY_MEMBER", "family_members", member.getFamilyId(), "Updated: " + member.getName());
         return success;
     }
@@ -116,7 +118,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         UserAccount user = requireAuth(sessionToken);
         if (user.getRole().equals("EMPLOYEE") && user.getEmployeeId() != employeeId)
             throw new RemoteException("Forbidden");
-        boolean success = dataStore.removeFamilyMember(familyId, employeeId);
+        boolean success = dbService.removeFamilyMember(familyId);
         if (success) auditLogger.log(user, "REMOVE_FAMILY_MEMBER", "family_members", familyId, "Removed family member #" + familyId);
         return success;
     }
@@ -126,10 +128,19 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         UserAccount user = requireAuth(sessionToken);
         if (user.getRole().equals("EMPLOYEE") && user.getEmployeeId() != employeeId)
             throw new RemoteException("Forbidden");
-        List<LeaveBalance> balances = dataStore.getLeaveBalances(employeeId, year);
+        List<LeaveBalance> balances = dbService.getLeaveBalances(employeeId, year);
         if (balances.isEmpty()) {
-            dataStore.initializeLeaveBalances(employeeId, year);
-            balances = dataStore.getLeaveBalances(employeeId, year);
+            // Initialize leave balances for new employee
+            for (String leaveType : new String[]{"annual", "medical", "emergency"}) {
+                LeaveBalance lb = new LeaveBalance();
+                lb.setEmployeeId(employeeId);
+                lb.setLeaveType(leaveType);
+                lb.setTotalDays(leaveType.equals("annual") ? 20 : (leaveType.equals("medical") ? 10 : 5));
+                lb.setUsedDays(0);
+                lb.setYear(year);
+                dbService.addLeaveBalance(lb);
+            }
+            balances = dbService.getLeaveBalances(employeeId, year);
         }
         return balances;
     }
@@ -145,7 +156,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             throw new RemoteException("Invalid number of leave days");
 
         int year = Integer.parseInt(application.getStartDate().substring(0, 4));
-        List<LeaveBalance> balances = dataStore.getLeaveBalances(application.getEmployeeId(), year);
+        List<LeaveBalance> balances = dbService.getLeaveBalances(application.getEmployeeId(), year);
         LeaveBalance balance = balances.stream()
             .filter(lb -> lb.getLeaveType().equals(application.getLeaveType()))
             .findFirst().orElse(null);
@@ -155,7 +166,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             throw new RemoteException("Insufficient balance. Remaining: " + balance.getRemainingDays());
 
         application.setStatus("PENDING");
-        int leaveId = dataStore.addLeaveApplication(application);
+        int leaveId = dbService.addLeaveApplication(application);
         auditLogger.log(user, "APPLY_LEAVE", "leave_applications", leaveId,
             application.getLeaveType() + ": " + application.getStartDate() + " to " + application.getEndDate());
         return true;
@@ -166,7 +177,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         UserAccount user = requireAuth(sessionToken);
         if (user.getRole().equals("EMPLOYEE") && user.getEmployeeId() != employeeId)
             throw new RemoteException("Forbidden");
-        return dataStore.getLeaveApplicationsByEmployee(employeeId);
+        return dbService.getLeaveApplications(employeeId);
     }
 
     // ==================== HR STAFF OPERATIONS ====================
@@ -183,7 +194,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         if (emp.getEmail() != null && !ValidationUtil.validateEmail(emp.getEmail()))
             throw new RemoteException("Invalid email format");
 
-        int empId = dataStore.addEmployee(emp);
+        int empId = dbService.addEmployee(emp);
         if (empId == -1)
             throw new RemoteException("Duplicate IC/Passport number");
 
@@ -193,8 +204,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         String username = emp.getFirstName().toLowerCase() + "." + emp.getLastName().toLowerCase();
         int suffix = 1;
         String base = username;
-        while (dataStore.getUserByUsername(username) != null) username = base + suffix++;
-        dataStore.addUser(new UserAccount(0, username, hash, "EMPLOYEE", empId, true));
+        while (dbService.getUserByUsername(username) != null) username = base + suffix++;
+        dbService.addUser(new UserAccount(0, username, hash, "EMPLOYEE", empId, true));
 
         auditLogger.log(user, "REGISTER_EMPLOYEE", "employees", empId,
             emp.getFullName() + " (IC: " + emp.getIcPassport() + "), user: " + username);
@@ -204,32 +215,40 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public List<Employee> searchEmployees(String query, String sessionToken) throws RemoteException {
         requireRole(sessionToken, "HR", "ADMIN");
-        return dataStore.searchEmployees(query);
+        return dbService.searchEmployees(query);
     }
 
     @Override
     public List<Employee> getAllEmployees(String sessionToken) throws RemoteException {
         requireRole(sessionToken, "HR", "ADMIN");
-        return dataStore.getAllEmployees();
+        return dbService.getAllEmployees();
     }
 
     @Override
     public List<String[]> getPendingProfileUpdates(String sessionToken) throws RemoteException {
         requireRole(sessionToken, "HR", "ADMIN");
-        return dataStore.getPendingProfileUpdates();
+        return dbService.getPendingProfileUpdates();
     }
 
     @Override
     public synchronized boolean approveProfileUpdate(int requestId, String sessionToken) throws RemoteException {
         UserAccount user = requireRole(sessionToken, "HR", "ADMIN");
-        String[] request = dataStore.getProfileUpdateRequest(requestId);
+        // Request retrieval - find the matching request from the list
+        List<String[]> allRequests = dbService.getPendingProfileUpdates();
+        String[] request = null;
+        for (String[] arr : allRequests) {
+            if (arr.length > 0 && Integer.parseInt(arr[0].trim()) == requestId) {
+                request = arr;
+                break;
+            }
+        }
         if (request == null) throw new RemoteException("Request not found");
 
         int employeeId = Integer.parseInt(request[1].trim());
         String fieldName = request[2].trim();
         String newValue = request[4].trim();
 
-        Employee emp = dataStore.getEmployee(employeeId);
+        Employee emp = dbService.getEmployee(employeeId);
         if (emp == null) throw new RemoteException("Employee not found");
 
         switch (fieldName.toLowerCase()) {
@@ -241,8 +260,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             case "lastname": emp.setLastName(newValue); break;
             default: throw new RemoteException("Unknown field: " + fieldName);
         }
-        dataStore.updateEmployee(emp);
-        dataStore.updateProfileRequest(requestId, "APPROVED", user.getUserId());
+        dbService.updateEmployee(emp);
+        dbService.updateProfileRequest(requestId, "APPROVED", user.getUserId());
         auditLogger.log(user, "APPROVE_PROFILE_UPDATE", "profile_updates", requestId,
             "emp#" + employeeId + ": " + fieldName + " = " + newValue);
         return true;
@@ -251,7 +270,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public synchronized boolean rejectProfileUpdate(int requestId, String sessionToken) throws RemoteException {
         UserAccount user = requireRole(sessionToken, "HR", "ADMIN");
-        dataStore.updateProfileRequest(requestId, "REJECTED", user.getUserId());
+        dbService.updateProfileRequest(requestId, "REJECTED", user.getUserId());
         auditLogger.log(user, "REJECT_PROFILE_UPDATE", "profile_updates", requestId, "Rejected #" + requestId);
         return true;
     }
@@ -259,9 +278,9 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public List<LeaveApplication> getPendingLeaveApplications(String sessionToken) throws RemoteException {
         requireRole(sessionToken, "HR", "ADMIN");
-        List<LeaveApplication> pending = dataStore.getPendingLeaveApplications();
+        List<LeaveApplication> pending = dbService.getPendingLeaveApplications();
         for (LeaveApplication la : pending) {
-            Employee emp = dataStore.getEmployee(la.getEmployeeId());
+            Employee emp = dbService.getEmployee(la.getEmployeeId());
             if (emp != null) la.setEmployeeName(emp.getFullName());
         }
         return pending;
@@ -270,20 +289,20 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public synchronized boolean approveLeave(int leaveId, String sessionToken) throws RemoteException {
         UserAccount user = requireRole(sessionToken, "HR", "ADMIN");
-        LeaveApplication app = dataStore.getLeaveApplication(leaveId);
+        LeaveApplication app = dbService.getLeaveApplication(leaveId);
         if (app == null) throw new RemoteException("Leave application not found");
         if (!"PENDING".equals(app.getStatus())) throw new RemoteException("Already processed");
 
         int year = Integer.parseInt(app.getStartDate().substring(0, 4));
-        if (!dataStore.updateLeaveBalance(app.getEmployeeId(), app.getLeaveType(), year, app.getDaysRequested()))
+        if (!dbService.updateLeaveBalance(app.getEmployeeId(), app.getLeaveType(), year, app.getDaysRequested()))
             throw new RemoteException("Failed to update leave balance");
 
         app.setStatus("APPROVED");
         app.setReviewedBy(user.getUserId());
         app.setReviewDate(LocalDateTime.now().toString());
-        dataStore.updateLeaveApplication(app);
+        dbService.updateLeaveApplication(app);
 
-        Employee emp = dataStore.getEmployee(app.getEmployeeId());
+        Employee emp = dbService.getEmployee(app.getEmployeeId());
         auditLogger.log(user, "APPROVE_LEAVE", "leave_applications", leaveId,
             "Approved " + app.getLeaveType() + " for " + (emp != null ? emp.getFullName() : "emp#" + app.getEmployeeId()));
         return true;
@@ -292,14 +311,14 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public synchronized boolean rejectLeave(int leaveId, String sessionToken) throws RemoteException {
         UserAccount user = requireRole(sessionToken, "HR", "ADMIN");
-        LeaveApplication app = dataStore.getLeaveApplication(leaveId);
+        LeaveApplication app = dbService.getLeaveApplication(leaveId);
         if (app == null) throw new RemoteException("Leave application not found");
         if (!"PENDING".equals(app.getStatus())) throw new RemoteException("Already processed");
 
         app.setStatus("REJECTED");
         app.setReviewedBy(user.getUserId());
         app.setReviewDate(LocalDateTime.now().toString());
-        dataStore.updateLeaveApplication(app);
+        dbService.updateLeaveApplication(app);
         auditLogger.log(user, "REJECT_LEAVE", "leave_applications", leaveId, "Rejected leave #" + leaveId);
         return true;
     }
@@ -307,13 +326,13 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public YearlyReport generateYearlyReport(int employeeId, int year, String sessionToken) throws RemoteException {
         UserAccount user = requireRole(sessionToken, "HR", "ADMIN");
-        Employee emp = dataStore.getEmployee(employeeId);
+        Employee emp = dbService.getEmployee(employeeId);
         if (emp == null) throw new RemoteException("Employee not found");
 
         YearlyReport report = new YearlyReport(emp,
-            dataStore.getFamilyMembers(employeeId),
-            dataStore.getLeaveBalances(employeeId, year),
-            dataStore.getLeaveApplicationsByYear(employeeId, year),
+            dbService.getFamilyMembers(employeeId),
+            dbService.getLeaveBalances(employeeId, year),
+            dbService.getLeaveApplicationsByYear(employeeId, year),
             year, LocalDateTime.now().toString());
 
         auditLogger.log(user, "GENERATE_REPORT", "employees", employeeId,
@@ -326,7 +345,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public List<UserAccount> getAllUsers(String sessionToken) throws RemoteException {
         requireRole(sessionToken, "ADMIN");
-        return dataStore.getAllUsers();
+        return dbService.getAllUsers();
     }
 
     @Override
@@ -337,11 +356,11 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             throw new RemoteException("Invalid username. Use 3-30 chars: letters, digits, dots, hyphens.");
         if (!ValidationUtil.validatePassword(password))
             throw new RemoteException("Password must be at least 6 characters.");
-        if (dataStore.getUserByUsername(username) != null)
+        if (dbService.getUserByUsername(username) != null)
             throw new RemoteException("Username already exists: " + username);
 
         String hash = PasswordHasher.hashPassword(password);
-        int userId = dataStore.addUser(new UserAccount(0, username, hash, role, employeeId, true));
+        int userId = dbService.addUser(new UserAccount(0, username, hash, role, employeeId, true));
         auditLogger.log(admin, "ADD_USER", "users", userId, "Created user: " + username + " [" + role + "]");
         return true;
     }
@@ -350,12 +369,12 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     public synchronized boolean updateUser(int userId, String username, String role,
                                             boolean isActive, String sessionToken) throws RemoteException {
         UserAccount admin = requireRole(sessionToken, "ADMIN");
-        UserAccount target = dataStore.getUserById(userId);
+        UserAccount target = dbService.getUserById(userId);
         if (target == null) throw new RemoteException("User not found");
         target.setUsername(username);
         target.setRole(role);
         target.setActive(isActive);
-        boolean success = dataStore.updateUser(target);
+        boolean success = dbService.updateUser(target);
         if (success) auditLogger.log(admin, "UPDATE_USER", "users", userId,
             "Updated: " + username + " [" + role + "] active=" + isActive);
         return success;
@@ -364,7 +383,7 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public synchronized boolean removeUser(int userId, String sessionToken) throws RemoteException {
         UserAccount admin = requireRole(sessionToken, "ADMIN");
-        boolean success = dataStore.removeUser(userId);
+        boolean success = dbService.removeUser(userId);
         if (success) auditLogger.log(admin, "DEACTIVATE_USER", "users", userId, "Deactivated user #" + userId);
         return success;
     }
@@ -372,6 +391,6 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
     @Override
     public List<AuditLogEntry> getAuditLog(String sessionToken) throws RemoteException {
         requireRole(sessionToken, "ADMIN");
-        return dataStore.getAuditLog();
+        return dbService.getAuditLog();
     }
 }

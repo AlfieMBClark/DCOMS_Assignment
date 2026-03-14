@@ -312,7 +312,24 @@ public class CSVDataStore {
         }
         return found;
     }
-
+    public synchronized boolean removeFamilyMember(int familyId) {
+        List<String> lines = readLines(FAMILY_FILE);
+        List<String> newLines = new ArrayList<>();
+        boolean found = false;
+        for (String line : lines) {
+            if (line.trim().isEmpty()) continue;
+            FamilyMember fm = FamilyMember.fromCSV(line);
+            if (fm != null && fm.getFamilyId() == familyId) {
+                found = true;
+            } else {
+                newLines.add(line);
+            }
+        }
+        if (found) {
+            writeLines(FAMILY_FILE, "family_id,employee_id,name,relationship,ic_passport,date_of_birth", newLines);
+        }
+        return found;
+    }
     // ==================== LEAVE BALANCE OPERATIONS ====================
 
     public synchronized void initializeLeaveBalances(int employeeId, int year) {
@@ -355,6 +372,54 @@ public class CSVDataStore {
                 "balance_id,employee_id,leave_type,total_days,used_days,year", newLines);
         }
         return found;
+    }
+
+    public synchronized List<LeaveBalance> getAllLeaveBalances() {
+        return readLines(LEAVE_BALANCE_FILE).stream()
+            .filter(l -> !l.trim().isEmpty())
+            .map(LeaveBalance::fromCSV)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    }
+
+    public synchronized int addLeaveBalance(LeaveBalance balance) {
+        int id = getNextId(LEAVE_BALANCE_FILE);
+        balance.setBalanceId(id);
+        appendLine(LEAVE_BALANCE_FILE, balance.toCSV());
+        return id;
+    }
+
+    public synchronized boolean updateLeaveBalance(LeaveBalance balance) {
+        List<String> lines = readLines(LEAVE_BALANCE_FILE);
+        List<String> newLines = new ArrayList<>();
+        boolean found = false;
+        for (String line : lines) {
+            if (line.trim().isEmpty()) continue;
+            LeaveBalance lb = LeaveBalance.fromCSV(line);
+            if (lb != null && lb.getBalanceId() == balance.getBalanceId()) {
+                newLines.add(balance.toCSV());
+                found = true;
+            } else {
+                newLines.add(line);
+            }
+        }
+        if (found) {
+            writeLines(LEAVE_BALANCE_FILE,
+                "balance_id,employee_id,leave_type,total_days,used_days,year", newLines);
+        }
+        return found;
+    }
+
+    public synchronized List<LeaveApplication> getLeaveApplications(int employeeId) {
+        return getLeaveApplicationsByEmployee(employeeId);
+    }
+
+    public synchronized List<LeaveApplication> getAllLeaveApplications() {
+        return readLines(LEAVE_APPS_FILE).stream()
+            .filter(l -> !l.trim().isEmpty())
+            .map(LeaveApplication::fromCSV)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
     }
 
     // ==================== LEAVE APPLICATION OPERATIONS ====================
@@ -503,6 +568,24 @@ public class CSVDataStore {
             .collect(Collectors.toList());
     }
 
+    public synchronized List<AuditLogEntry> getAuditLogForUser(int userId) {
+        return readLines(AUDIT_LOG_FILE).stream()
+            .filter(l -> !l.trim().isEmpty())
+            .map(AuditLogEntry::fromCSV)
+            .filter(Objects::nonNull)
+            .filter(entry -> entry.getUserId() == userId)
+            .collect(Collectors.toList());
+    }
+
+    public synchronized List<AuditLogEntry> getAuditLogForTable(String tableName) {
+        return readLines(AUDIT_LOG_FILE).stream()
+            .filter(l -> !l.trim().isEmpty())
+            .map(AuditLogEntry::fromCSV)
+            .filter(Objects::nonNull)
+            .filter(entry -> tableName != null && tableName.equals(entry.getTargetTable()))
+            .collect(Collectors.toList());
+    }
+
     // ==================== PAYROLL OPERATIONS ====================
 
     public synchronized int addPayrollRecord(PayrollRecord record) {
@@ -536,7 +619,56 @@ public class CSVDataStore {
             .collect(Collectors.toList());
     }
 
-    // ==================== HELPER ====================
+    public synchronized List<PayrollRecord> getPayrollRecords(int employeeId) {
+        return readLines(PAYROLL_FILE).stream()
+            .filter(l -> !l.trim().isEmpty())
+            .map(PayrollRecord::fromCSV)
+            .filter(Objects::nonNull)
+            .filter(pr -> pr.getEmployeeId() == employeeId)
+            .collect(Collectors.toList());
+    }
+
+    public synchronized List<PayrollRecord> getAllPayrollRecords() {
+        return readLines(PAYROLL_FILE).stream()
+            .filter(l -> !l.trim().isEmpty())
+            .map(PayrollRecord::fromCSV)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    }
+
+    public synchronized boolean updatePayrollRecord(PayrollRecord record) {
+        List<String> lines = readLines(PAYROLL_FILE);
+        List<String> newLines = new ArrayList<>();
+        boolean found = false;
+        for (String line : lines) {
+            if (line.trim().isEmpty()) continue;
+            PayrollRecord pr = PayrollRecord.fromCSV(line);
+            if (pr != null && pr.getPayrollId() == record.getPayrollId()) {
+                newLines.add(record.toCSV());
+                found = true;
+            } else {
+                newLines.add(line);
+            }
+        }
+        if (found) {
+            writeLines(PAYROLL_FILE,
+                "payroll_id,employee_id,month,year,basic_salary,deductions,net_salary,generated_at",
+                newLines);
+        }
+        return found;
+    }
+
+    public synchronized List<Object> getProfileUpdateRequests() {
+        return new ArrayList<>(getPendingProfileUpdates());
+    }
+
+    public synchronized boolean approveProfileUpdate(int requestId, int reviewedBy) {
+        return updateProfileRequest(requestId, "APPROVED", reviewedBy);
+    }
+
+    public synchronized boolean rejectProfileUpdate(int requestId) {
+        return updateProfileRequest(requestId, "REJECTED", 0);
+    }
 
     private static String escapeCsv(String value) {
         if (value == null) return "";

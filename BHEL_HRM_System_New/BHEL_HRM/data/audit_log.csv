@@ -1,0 +1,4 @@
+log_id,user_id,username,role,action,target_table,target_id,details,timestamp
+1,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098,2026-03-14T16:42:27.773510800
+2,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-14T16:42:30.585477700
+3,1,admin,ADMIN,LOGIN,users,1,User logged in,2026-03-14T16:42:53.079082

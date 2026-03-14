@@ -1,6 +1,7 @@
 package server;
 
 import common.models.UserAccount;
+import common.interfaces.DatabaseService;
 import utils.PasswordHasher;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -10,51 +11,63 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 /**
- * Main server entry point.
- * Supports both plain and SSL/TLS RMI modes.
+ * Application Server - Tier 2 of the 3-tier architecture.
+ * Handles business logic and user sessions.
+ * Connects to and delegates data operations to the Database Server.
  *
+ * Supports both plain and SSL/TLS RMI modes.
  * SSL mode is enabled by setting -Dssl.enabled=true JVM property
  * along with keystore/truststore configuration.
  *
  * Usage:
- *   Plain:  java -cp out/ server.ServerMain [port] [dataDir]
+ *   Plain:  java -cp out/ server.ServerMain [port] [dbHost] [dbPort]
  *   SSL:    java -cp out/ -Dssl.enabled=true \
  *             -Djavax.net.ssl.keyStore=certs/server.keystore \
  *             -Djavax.net.ssl.keyStorePassword=bhel2024 \
- *             server.ServerMain [port] [dataDir]
+ *             server.ServerMain [port] [dbHost] [dbPort]
+ *
+ * Default Database Server: rmi://localhost:1098/DatabaseService
  */
 public class ServerMain {
 
     public static final int DEFAULT_PORT = 1099;
-    public static final String DEFAULT_DATA_DIR = "data";
+    public static final String DEFAULT_DB_HOST = "localhost";
+    public static final int DEFAULT_DB_PORT = 1098;
 
     public static void main(String[] args) {
         int port = DEFAULT_PORT;
-        String dataDir = DEFAULT_DATA_DIR;
+        String dbHost = DEFAULT_DB_HOST;
+        int dbPort = DEFAULT_DB_PORT;
         boolean sslEnabled = "true".equals(System.getProperty("ssl.enabled"));
 
         if (args.length >= 1) {
             try { port = Integer.parseInt(args[0]); } catch (NumberFormatException e) { /* use default */ }
         }
         if (args.length >= 2) {
-            dataDir = args[1];
+            dbHost = args[1];
+        }
+        if (args.length >= 3) {
+            try { dbPort = Integer.parseInt(args[2]); } catch (NumberFormatException e) { /* use default */ }
         }
 
         System.out.println("============================================");
-        System.out.println("  BHEL HRM System - Server Starting...");
+        System.out.println("  BHEL HRM System - Application Server");
+        System.out.println("  (3-Tier Architecture - Tier 2)");
         System.out.println("============================================");
-        System.out.println("  Port:      " + port);
-        System.out.println("  Data Dir:  " + dataDir);
-        System.out.println("  SSL/TLS:   " + (sslEnabled ? "ENABLED" : "DISABLED"));
+        System.out.println("  Port:           " + port);
+        System.out.println("  Database Host:  " + dbHost);
+        System.out.println("  Database Port:  " + dbPort);
+        System.out.println("  SSL/TLS:        " + (sslEnabled ? "ENABLED" : "DISABLED"));
         System.out.println("============================================");
 
         try {
-            // Initialize data store
-            CSVDataStore dataStore = new CSVDataStore(dataDir);
-            AuditLogger auditLogger = new AuditLogger(dataStore);
-
-            // Seed default data if no users exist
-            seedDefaultData(dataStore);
+            // Connect to Database Server
+            String dbServiceURL = "rmi://" + dbHost + ":" + dbPort + "/DatabaseService";
+            System.out.println("  Connecting to: " + dbServiceURL);
+            DatabaseService dbService = (DatabaseService) java.rmi.Naming.lookup(dbServiceURL);
+            System.out.println("  Connected to Database Server successfully!");
+            
+            AuditLogger auditLogger = new AuditLogger(dbService);
 
             // SSL socket factories (null if SSL disabled)
             RMIClientSocketFactory csf = null;
@@ -68,9 +81,9 @@ public class ServerMain {
             }
 
             // Create service implementations (with or without SSL)
-            AuthServiceImpl authService = new AuthServiceImpl(dataStore, auditLogger, port + 1, csf, ssf);
-            HRMServiceImpl hrmService = new HRMServiceImpl(dataStore, authService, auditLogger, port + 2, csf, ssf);
-            PRSServiceImpl prsService = new PRSServiceImpl(dataStore, authService, auditLogger, port + 3, csf, ssf);
+            AuthServiceImpl authService = new AuthServiceImpl(dbService, auditLogger, port + 1, csf, ssf);
+            HRMServiceImpl hrmService = new HRMServiceImpl(dbService, authService, auditLogger, port + 2, csf, ssf);
+            PRSServiceImpl prsService = new PRSServiceImpl(dbService, authService, auditLogger, port + 3, csf, ssf);
 
             // Create RMI registry
             Registry registry;
@@ -100,62 +113,12 @@ public class ServerMain {
             System.out.println("  Press Ctrl+C to stop");
             System.out.println("============================================");
 
-            auditLogger.log(null, "SERVER_START", null, 0,
-                "Server started on port " + port + (sslEnabled ? " (SSL)" : ""));
+            auditLogger.logServerStart(port, sslEnabled);
 
         } catch (Exception e) {
             System.err.println("[SERVER] Fatal error: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
-    }
-
-    /**
-     * Seeds default admin, HR, and sample employee accounts if none exist.
-     */
-    private static void seedDefaultData(CSVDataStore dataStore) {
-        if (!dataStore.getAllUsers().isEmpty()) {
-            System.out.println("[SERVER] Existing data found - skipping seed");
-            return;
-        }
-
-        System.out.println("[SERVER] No users found - seeding default data...");
-
-        // Admin account
-        UserAccount admin = new UserAccount(0, "admin",
-            PasswordHasher.hashPassword("admin123"), "ADMIN", 0, true);
-        dataStore.addUser(admin);
-        System.out.println("[SERVER]   admin / admin123");
-
-        // HR account
-        UserAccount hr = new UserAccount(0, "hr1",
-            PasswordHasher.hashPassword("hr1234"), "HR", 0, true);
-        dataStore.addUser(hr);
-        System.out.println("[SERVER]   hr1 / hr1234");
-
-        // Sample employee
-        common.models.Employee emp = new common.models.Employee();
-        emp.setFirstName("Ahmad");
-        emp.setLastName("Ibrahim");
-        emp.setIcPassport("990101-14-1234");
-        emp.setEmail("ahmad@bhel.com");
-        emp.setPhone("+60123456789");
-        emp.setDepartment("Engineering");
-        emp.setPosition("Software Developer");
-        emp.setDateJoined("2024-01-15");
-        emp.setActive(true);
-        int empId = dataStore.addEmployee(emp);
-
-        UserAccount empUser = new UserAccount(0, "ahmad.ibrahim",
-            PasswordHasher.hashPassword("emp123"), "EMPLOYEE", empId, true);
-        dataStore.addUser(empUser);
-        System.out.println("[SERVER]   ahmad.ibrahim / emp123 (ID: " + empId + ")");
-
-        // Family member
-        common.models.FamilyMember spouse = new common.models.FamilyMember(
-            0, empId, "Siti Aminah", "SPOUSE", "990505-14-5678", "1999-05-05");
-        dataStore.addFamilyMember(spouse);
-
-        System.out.println("[SERVER] Default data seeded successfully!");
     }
 }
