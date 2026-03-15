@@ -10,11 +10,11 @@ We developed a distributed Human Resource Management System for BHEL using Java 
 
 We split the system into three independent tiers, each running as its own Java process:
 
-| Tier | Component | Port | Responsibility |
-|------|-----------|------|----------------|
-| Tier 3 | Database Server | 1098 | CSV data persistence, audit logging, replication |
+| Tier   | Component          | Port | Responsibility                                     |
+|--------|--------------------|------|----------------------------------------------------|
+| Tier 3 | Database Server    | 1098 | CSV data persistence, audit logging, replication   |
 | Tier 2 | Application Server | 1099 | Business logic, authentication, session management |
-| Tier 1 | Client GUI | — | Swing-based user interface |
+| Tier 1 | Client GUI         | —    | Swing-based user interface                         |
 
 The tiers communicate over RMI. The Application Server never touches CSV files directly — it calls the Database Server remotely for every read and write operation. This separation means we can deploy each tier on a different machine, and the database layer can be swapped out (e.g., to MySQL) without touching the business logic or client code.
 
@@ -185,28 +185,28 @@ Kill Laptop A to trigger failover on Laptop B's client.
 
 ### Test Accounts
 
-| Username | Password | Role |
-|----------|----------|------|
-| admin | admin123 | Administrator |
-| hr1 | hr1234 | HR Staff |
-| ahmad.ibrahim | emp123 | Employee |
+| Username      | Password | Role          |
+|---------------|----------|---------------|
+| admin         | admin123 | Administrator |
+| hr1           | hr1234   | HR Staff      |
+| ahmad.ibrahim | emp123   | Employee      |
 
 ---
 
 ## Technologies Used
 
-| Technology | Purpose |
-|-----------|---------|
-| Java RMI | Distributed communication between all tiers |
-| Java Swing | GUI client with dark theme |
-| SSL/TLS (SslRMISocketFactory) | Encrypted RMI communication |
-| SHA-256 with salt | Password hashing |
-| CSV file I/O (java.nio) | Data persistence |
-| Java Dynamic Proxies | Transparent client failover |
-| ConcurrentHashMap | Thread-safe session storage |
-| Synchronized blocks | Concurrent write protection |
-| UUID | Session token generation |
-| Regex validation | IC/Passport, email, phone format checking |
+| Technology                    | Purpose                                     |
+|-------------------------------|---------------------------------------------|
+| Java RMI                      | Distributed communication between all tiers |
+| Java Swing                    | GUI client with dark theme                  |
+| SSL/TLS (SslRMISocketFactory) | Encrypted RMI communication                 |
+| SHA-256 with salt             | Password hashing                            |
+| CSV file I/O (java.nio)       | Data persistence                            |
+| Java Dynamic Proxies          | Transparent client failover                 |
+| ConcurrentHashMap             | Thread-safe session storage                 |
+| Synchronized blocks           | Concurrent write protection                 |
+| UUID                          | Session token generation                    |
+| Regex validation              | IC/Passport, email, phone format checking   |
 
 ---
 
