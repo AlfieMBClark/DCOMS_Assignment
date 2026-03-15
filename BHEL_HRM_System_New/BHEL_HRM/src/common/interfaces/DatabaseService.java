@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Remote interface for Database Service.
  * Handles all CSV file operations and data persistence.
- * All operations are logged with user information for auditing.
+ * Also provides replication endpoints for primary-backup fault tolerance.
  */
 public interface DatabaseService extends Remote {
 
@@ -80,4 +80,15 @@ public interface DatabaseService extends Remote {
     List<AuditLogEntry> getAuditLogForTable(String tableName) throws RemoteException;
     void logAudit(int userId, String username, String role, String action, String targetTable, 
                   int targetId, String details) throws RemoteException;
+
+    // ==================== REPLICATION (Fault Tolerance) ====================
+
+    /** Health check — returns true if this database server is alive. */
+    boolean ping() throws RemoteException;
+
+    /** Receive a single appended CSV line from the primary. */
+    void replicateAppend(String fileName, String csvLine) throws RemoteException;
+
+    /** Receive a full CSV file rewrite from the primary. */
+    void replicateWrite(String fileName, String header, List<String> dataLines) throws RemoteException;
 }

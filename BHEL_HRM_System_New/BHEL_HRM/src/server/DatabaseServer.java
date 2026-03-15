@@ -1,5 +1,6 @@
 package server;
 
+import common.interfaces.DatabaseService;
 import common.models.UserAccount;
 import utils.PasswordHasher;
 import java.rmi.registry.LocateRegistry;
@@ -12,14 +13,18 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 /**
  * Database Server - Tier 3 of the 3-tier architecture.
  * Handles all CSV data operations and maintains audit logs.
- * Runs on a separate port from the Application Server.
+ *
+ * FAULT TOLERANCE: When started with --backup, this server acts as the
+ * PRIMARY database and replicates every write to a backup DatabaseServer.
+ * Without --backup, it runs as a standalone (or backup) database server.
  *
  * Usage:
- *   Plain:  java -cp out/ server.DatabaseServer [port] [dataDir]
- *   SSL:    java -cp out/ -Dssl.enabled=true \
- *             -Djavax.net.ssl.keyStore=certs/server.keystore \
- *             -Djavax.net.ssl.keyStorePassword=bhel2024 \
- *             server.DatabaseServer [port] [dataDir]
+ *   Standalone/Backup: java -cp out/ server.DatabaseServer [port] [dataDir]
+ *   Primary:           java -cp out/ server.DatabaseServer [port] [dataDir] --backup host:port
+ *
+ * Examples:
+ *   Laptop A (primary):  java -cp out/ server.DatabaseServer 1098 data --backup 192.168.1.20:2098
+ *   Laptop B (backup):   java -cp out/ server.DatabaseServer 2098 data_backup
  */
 public class DatabaseServer {
 
@@ -29,22 +34,38 @@ public class DatabaseServer {
     public static void main(String[] args) {
         int port = DEFAULT_PORT;
         String dataDir = DEFAULT_DATA_DIR;
+        String backupHost = null;
+        int backupPort = 0;
         boolean sslEnabled = "true".equals(System.getProperty("ssl.enabled"));
 
-        if (args.length >= 1) {
-            try { port = Integer.parseInt(args[0]); } catch (NumberFormatException e) { /* use default */ }
+        // Parse arguments
+        for (int i = 0; i < args.length; i++) {
+            if ("--backup".equals(args[i]) && i + 1 < args.length) {
+                String[] parts = args[i + 1].split(":");
+                backupHost = parts[0];
+                backupPort = Integer.parseInt(parts[1]);
+                i++;
+            } else if (i == 0) {
+                try { port = Integer.parseInt(args[0]); } catch (NumberFormatException e) {}
+            } else if (i == 1 && !args[i].startsWith("--")) {
+                dataDir = args[i];
+            }
         }
-        if (args.length >= 2) {
-            dataDir = args[1];
-        }
+
+        boolean isPrimary = (backupHost != null);
+        String mode = isPrimary ? "PRIMARY" : "STANDALONE / BACKUP";
 
         System.out.println("============================================");
         System.out.println("  BHEL HRM System - Database Server");
         System.out.println("  (3-Tier Architecture - Tier 3)");
         System.out.println("============================================");
+        System.out.println("  Mode:      " + mode);
         System.out.println("  Port:      " + port);
         System.out.println("  Data Dir:  " + dataDir);
         System.out.println("  SSL/TLS:   " + (sslEnabled ? "ENABLED" : "DISABLED"));
+        if (isPrimary) {
+            System.out.println("  Backup:    " + backupHost + ":" + backupPort);
+        }
         System.out.println("============================================");
 
         try {
@@ -62,11 +83,10 @@ public class DatabaseServer {
                 csf = new SslRMIClientSocketFactory();
                 ssf = new SslRMIServerSocketFactory(null, null, true);
                 System.out.println("[SSL] Using SSL/TLS socket factories");
-                System.out.println("[SSL] Protocol: TLSv1.2/TLSv1.3");
             }
 
             // Create database service
-            DatabaseServiceImpl dbService = new DatabaseServiceImpl(dataStore, port, csf, ssf);
+            DatabaseServiceImpl dbService = new DatabaseServiceImpl(dataStore, dataDir, port, csf, ssf);
 
             // Create RMI registry
             Registry registry;
@@ -81,17 +101,18 @@ public class DatabaseServer {
 
             System.out.println("============================================");
             System.out.println("  Database Service registered successfully");
-            if (sslEnabled) {
-                System.out.println("  Communication is encrypted (SSL/TLS)");
-            }
             System.out.println("============================================");
             System.out.println("  Database Server listening on port " + port);
             System.out.println("  Press Ctrl+C to stop");
             System.out.println("============================================");
 
-            // Log server startup
             dataStore.addAuditLog(0, "SYSTEM", "SYSTEM", "DB_SERVER_START", null, 0,
-                "Database server started on port " + port + (sslEnabled ? " (SSL)" : ""));
+                "Database server started on port " + port + " [" + mode + "]");
+
+            // PRIMARY: start replication manager
+            if (isPrimary) {
+                startReplicationManager(dataStore, backupHost, backupPort);
+            }
 
         } catch (Exception e) {
             System.err.println("[DATABASE_SERVER] Fatal error: " + e.getMessage());
@@ -101,8 +122,51 @@ public class DatabaseServer {
     }
 
     /**
-     * Seeds default admin, HR, and sample employee accounts if none exist.
+     * Background thread that manages replication to the backup DatabaseServer.
+     * Connects, pings every 15 seconds, reconnects if backup goes down.
+     * Primary never blocks or crashes due to backup unavailability.
      */
+    private static void startReplicationManager(CSVDataStore dataStore,
+                                                 String backupHost, int backupPort) {
+        Thread t = new Thread(() -> {
+            System.out.println("[REPLICATION] Connecting to backup at " + backupHost + ":" + backupPort + "...");
+
+            while (true) {
+                try {
+                    Registry backupRegistry = LocateRegistry.getRegistry(backupHost, backupPort);
+                    DatabaseService backupDb =
+                        (DatabaseService) backupRegistry.lookup("DatabaseService");
+
+                    backupDb.ping();
+                    dataStore.setReplicator(backupDb);
+
+                    System.out.println("============================================");
+                    System.out.println("  [REPLICATION] Connected to backup!");
+                    System.out.println("  [REPLICATION] All writes now replicated");
+                    System.out.println("============================================");
+
+                    // Health monitoring — ping every 15 seconds
+                    while (true) {
+                        Thread.sleep(15000);
+                        try {
+                            backupDb.ping();
+                        } catch (Exception e) {
+                            System.err.println("[REPLICATION] Backup lost! Continuing standalone...");
+                            dataStore.setReplicator(null);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    dataStore.setReplicator(null);
+                    System.out.println("[REPLICATION] Backup not available. Retrying in 5s...");
+                    try { Thread.sleep(5000); } catch (InterruptedException ie) { break; }
+                }
+            }
+        }, "ReplicationManager");
+        t.setDaemon(true);
+        t.start();
+    }
+
     private static void seedDefaultData(CSVDataStore dataStore) {
         if (!dataStore.getAllUsers().isEmpty()) {
             System.out.println("[DB] Existing data found - skipping seed");
@@ -111,19 +175,16 @@ public class DatabaseServer {
 
         System.out.println("[DB] No users found - seeding default data...");
 
-        // Admin account
         UserAccount admin = new UserAccount(0, "admin",
             PasswordHasher.hashPassword("admin123"), "ADMIN", 0, true);
         dataStore.addUser(admin);
         System.out.println("[DB]   admin / admin123");
 
-        // HR account
         UserAccount hr = new UserAccount(0, "hr1",
             PasswordHasher.hashPassword("hr1234"), "HR", 0, true);
         dataStore.addUser(hr);
         System.out.println("[DB]   hr1 / hr1234");
 
-        // Sample employee
         common.models.Employee emp = new common.models.Employee();
         emp.setFirstName("Ahmad");
         emp.setLastName("Ibrahim");

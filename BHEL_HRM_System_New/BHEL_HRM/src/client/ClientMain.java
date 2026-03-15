@@ -3,13 +3,33 @@ package client;
 import common.interfaces.AuthService;
 import common.interfaces.HRMService;
 import common.interfaces.PRSService;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.rmi.ConnectException;
+import java.rmi.ConnectIOException;
+import java.rmi.MarshalException;
+import java.rmi.NoSuchObjectException;
+import java.rmi.RemoteException;
+import java.rmi.UnmarshalException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import javax.swing.*;
 import java.awt.*;
 
 /**
- * Client entry point with dark mode, password change, and SSL support.
+ * Client entry point with dark mode, password change, and
+ * TRANSPARENT PRIMARY-BACKUP FAILOVER.
+ *
+ * Usage:
+ *   Single server:   java client.ClientMain [host] [port]
+ *   With failover:   java client.ClientMain [primaryHost] [primaryPort] [backupHost] [backupPort]
+ *
+ * When 4 args are provided, all remote calls go through failover proxies.
+ * If the primary server dies, the client auto-switches to the backup,
+ * shows a popup, and redirects to the login screen.
+ * All panel classes (Employee, HR, Admin, Login) require ZERO modifications.
  */
 public class ClientMain {
 
@@ -40,38 +60,46 @@ public class ClientMain {
     public static String sessionToken;
     public static JFrame mainFrame;
 
+    // ==================== FAILOVER STATE ====================
+    private static String primaryHost;
+    private static int primaryPort;
+    private static String backupHost;
+    private static int backupPort;
+    private static boolean onBackup = false;
+    private static boolean failoverEnabled = false;
+    private static final Object failoverLock = new Object();
+    private static FailoverHandler authHandler, hrmHandler, prsHandler;
+
     public static void main(String[] args) {
-        String host = args.length >= 1 ? args[0] : "localhost";
-        int port = 1099;
-        if (args.length >= 2) try { port = Integer.parseInt(args[1]); } catch (NumberFormatException e) {}
+        primaryHost = args.length >= 1 ? args[0] : "localhost";
+        primaryPort = 1099;
+        if (args.length >= 2) {
+            try { primaryPort = Integer.parseInt(args[1]); } catch (NumberFormatException e) {}
+        }
+        if (args.length >= 4) {
+            backupHost = args[2];
+            try { backupPort = Integer.parseInt(args[3]); } catch (NumberFormatException e) {}
+            failoverEnabled = true;
+            System.out.println("[CLIENT] Failover enabled: backup at " + backupHost + ":" + backupPort);
+        }
 
-        final String fHost = host; final int fPort = port;
-
-        boolean connected = false;
-        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                System.out.println("[CLIENT] Connecting to " + fHost + ":" + fPort + " (attempt " + attempt + ")...");
-                Registry registry = LocateRegistry.getRegistry(fHost, fPort);
-                authService = (AuthService) registry.lookup("AuthService");
-                hrmService = (HRMService) registry.lookup("HRMService");
-                prsService = (PRSService) registry.lookup("PRSService");
-                connected = true;
-                System.out.println("[CLIENT] Connected!");
-                break;
-            } catch (Exception e) {
-                System.err.println("[CLIENT] Failed: " + e.getMessage());
-                if (attempt < MAX_RETRIES) try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException ie) { break; }
-            }
+        boolean connected = connectToServer(primaryHost, primaryPort, "primary");
+        if (!connected && failoverEnabled) {
+            System.out.println("[CLIENT] Primary unavailable, trying backup...");
+            connected = connectToServer(backupHost, backupPort, "backup");
+            if (connected) onBackup = true;
         }
 
         if (!connected) {
-            JOptionPane.showMessageDialog(null, "Cannot connect to " + fHost + ":" + fPort, "Connection Error", JOptionPane.ERROR_MESSAGE);
+            String msg = "Cannot connect to server at " + primaryHost + ":" + primaryPort;
+            if (failoverEnabled) msg += "\nBackup at " + backupHost + ":" + backupPort + " also unreachable.";
+            JOptionPane.showMessageDialog(null, msg, "Connection Error", JOptionPane.ERROR_MESSAGE);
             System.exit(1);
         }
 
         SwingUtilities.invokeLater(() -> {
             applyDarkTheme();
-            mainFrame = new JFrame("BHEL HRM System");
+            mainFrame = new JFrame(buildTitle("Login"));
             mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             mainFrame.setSize(1050, 720);
             mainFrame.setMinimumSize(new Dimension(900, 600));
@@ -81,6 +109,120 @@ public class ClientMain {
             mainFrame.setVisible(true);
         });
     }
+
+    private static boolean connectToServer(String host, int port, String label) {
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                System.out.println("[CLIENT] Connecting to " + label + " (" + host + ":" + port + ") attempt " + attempt + "...");
+                Registry registry = LocateRegistry.getRegistry(host, port);
+                AuthService rawAuth = (AuthService) registry.lookup("AuthService");
+                HRMService rawHRM = (HRMService) registry.lookup("HRMService");
+                PRSService rawPRS = (PRSService) registry.lookup("PRSService");
+                rawAuth.getCurrentUser("test");
+
+                if (failoverEnabled) {
+                    authHandler = new FailoverHandler(rawAuth);
+                    hrmHandler  = new FailoverHandler(rawHRM);
+                    prsHandler  = new FailoverHandler(rawPRS);
+                    authService = proxyFor(AuthService.class, authHandler);
+                    hrmService  = proxyFor(HRMService.class, hrmHandler);
+                    prsService  = proxyFor(PRSService.class, prsHandler);
+                } else {
+                    authService = rawAuth;
+                    hrmService  = rawHRM;
+                    prsService  = rawPRS;
+                }
+                System.out.println("[CLIENT] Connected to " + label + "!");
+                return true;
+            } catch (Exception e) {
+                System.err.println("[CLIENT] " + label + " attempt " + attempt + " failed: " + e.getMessage());
+                if (attempt < MAX_RETRIES) {
+                    try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException ie) { break; }
+                }
+            }
+        }
+        return false;
+    }
+
+    // ==================== FAILOVER LOGIC ====================
+
+    private static class FailoverHandler implements InvocationHandler {
+        private volatile Object service;
+        FailoverHandler(Object service) { this.service = service; }
+        void updateService(Object s) { this.service = s; }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            try {
+                return method.invoke(service, args);
+            } catch (InvocationTargetException ite) {
+                Throwable cause = ite.getCause();
+                if (isConnectionError(cause)) {
+                    System.err.println("[FAILOVER] Connection error: " + cause.getClass().getSimpleName());
+                    if (attemptFailover()) {
+                        throw new RemoteException("Server failover completed. Please login again.");
+                    } else {
+                        throw new RemoteException("Server unreachable and backup not available.");
+                    }
+                }
+                throw cause;
+            }
+        }
+    }
+
+    private static boolean attemptFailover() {
+        synchronized (failoverLock) {
+            if (onBackup || backupHost == null) return false;
+            System.out.println("[FAILOVER] Switching to backup: " + backupHost + ":" + backupPort);
+            try {
+                Registry reg = LocateRegistry.getRegistry(backupHost, backupPort);
+                AuthService newAuth = (AuthService) reg.lookup("AuthService");
+                HRMService newHRM  = (HRMService) reg.lookup("HRMService");
+                PRSService newPRS  = (PRSService) reg.lookup("PRSService");
+                newAuth.getCurrentUser("failover-test");
+
+                authHandler.updateService(newAuth);
+                hrmHandler.updateService(newHRM);
+                prsHandler.updateService(newPRS);
+                sessionToken = null;
+                onBackup = true;
+
+                SwingUtilities.invokeLater(() -> {
+                    if (mainFrame != null) {
+                        mainFrame.setTitle(buildTitle("Login"));
+                        JOptionPane.showMessageDialog(mainFrame,
+                            "Primary server is down.\nSwitched to backup at " + backupHost + ":" + backupPort + ".\nPlease login again.",
+                            "Server Failover", JOptionPane.WARNING_MESSAGE);
+                        showLoginPanel();
+                    }
+                });
+                return true;
+            } catch (Exception e) {
+                System.err.println("[FAILOVER] Backup also unreachable: " + e.getMessage());
+                return false;
+            }
+        }
+    }
+
+    private static boolean isConnectionError(Throwable t) {
+        if (t == null) return false;
+        if (t instanceof ConnectException || t instanceof ConnectIOException
+            || t instanceof UnmarshalException || t instanceof NoSuchObjectException
+            || t instanceof MarshalException || t instanceof java.net.ConnectException
+            || t instanceof java.io.EOFException) return true;
+        return isConnectionError(t.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T proxyFor(Class<T> iface, FailoverHandler handler) {
+        return (T) Proxy.newProxyInstance(iface.getClassLoader(), new Class[]{iface}, handler);
+    }
+
+    private static String buildTitle(String section) {
+        return "BHEL HRM - " + section + (onBackup ? "  [BACKUP SERVER]" : "");
+    }
+
+    // ==================== DARK THEME ====================
 
     private static void applyDarkTheme() {
         UIManager.put("Panel.background", BG_DARK);
@@ -166,7 +308,6 @@ public class ClientMain {
         return f;
     }
 
-    /** Creates the top navigation bar with dot accent, title, password change, and logout. */
     public static JPanel createTopBar(String titleText, Color accentColor) {
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setBackground(BG_PANEL);
@@ -181,6 +322,11 @@ public class ClientMain {
         JLabel title = new JLabel(titleText);
         title.setForeground(FG_PRIMARY); title.setFont(new Font("Segoe UI", Font.BOLD, 17));
         left.add(title);
+        if (onBackup) {
+            JLabel tag = new JLabel("  [BACKUP]");
+            tag.setForeground(ACCENT_ORANGE); tag.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            left.add(tag);
+        }
         topBar.add(left, BorderLayout.WEST);
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0)); right.setOpaque(false);
@@ -196,7 +342,6 @@ public class ClientMain {
         return topBar;
     }
 
-    /** Shows password change dialog. */
     public static void showChangePasswordDialog() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_PANEL);
@@ -205,13 +350,10 @@ public class ClientMain {
 
         JLabel h = new JLabel("Change Password"); h.setFont(new Font("Segoe UI", Font.BOLD, 14)); h.setForeground(FG_PRIMARY);
         g.gridy = 0; panel.add(h, g);
-
         g.gridy = 1; JLabel l1 = new JLabel("CURRENT PASSWORD"); l1.setFont(new Font("Segoe UI", Font.BOLD, 10)); l1.setForeground(FG_DIM); panel.add(l1, g);
         JPasswordField oldPw = styledPasswordField(20); g.gridy = 2; panel.add(oldPw, g);
-
         g.gridy = 3; JLabel l2 = new JLabel("NEW PASSWORD (min 6 chars)"); l2.setFont(new Font("Segoe UI", Font.BOLD, 10)); l2.setForeground(FG_DIM); panel.add(l2, g);
         JPasswordField newPw = styledPasswordField(20); g.gridy = 4; panel.add(newPw, g);
-
         g.gridy = 5; JLabel l3 = new JLabel("CONFIRM NEW PASSWORD"); l3.setFont(new Font("Segoe UI", Font.BOLD, 10)); l3.setForeground(FG_DIM); panel.add(l3, g);
         JPasswordField confirmPw = styledPasswordField(20); g.gridy = 6; panel.add(confirmPw, g);
 
@@ -231,10 +373,10 @@ public class ClientMain {
     }
 
     // ==================== NAVIGATION ====================
-    public static void showLoginPanel() { swap(new LoginPanel()); mainFrame.setTitle("BHEL HRM - Login"); }
-    public static void showEmployeePanel(int id) { swap(new EmployeePanel(id)); mainFrame.setTitle("BHEL HRM - Employee"); }
-    public static void showHRPanel() { swap(new HRPanel()); mainFrame.setTitle("BHEL HRM - HR"); }
-    public static void showAdminPanel() { swap(new AdminPanel()); mainFrame.setTitle("BHEL HRM - Admin"); }
+    public static void showLoginPanel()         { swap(new LoginPanel());       mainFrame.setTitle(buildTitle("Login")); }
+    public static void showEmployeePanel(int id){ swap(new EmployeePanel(id));  mainFrame.setTitle(buildTitle("Employee")); }
+    public static void showHRPanel()            { swap(new HRPanel());          mainFrame.setTitle(buildTitle("HR")); }
+    public static void showAdminPanel()         { swap(new AdminPanel());       mainFrame.setTitle(buildTitle("Admin")); }
 
     private static void swap(JPanel panel) {
         mainFrame.getContentPane().removeAll();
@@ -248,6 +390,6 @@ public class ClientMain {
         showLoginPanel();
     }
 
-    public static void showError(String msg) { JOptionPane.showMessageDialog(mainFrame, msg, "Error", JOptionPane.ERROR_MESSAGE); }
-    public static void showSuccess(String msg) { JOptionPane.showMessageDialog(mainFrame, msg, "Success", JOptionPane.INFORMATION_MESSAGE); }
+    public static void showError(String msg)   { JOptionPane.showMessageDialog(mainFrame, msg, "Error", JOptionPane.ERROR_MESSAGE); }
+    public static void showSuccess(String msg)  { JOptionPane.showMessageDialog(mainFrame, msg, "Success", JOptionPane.INFORMATION_MESSAGE); }
 }

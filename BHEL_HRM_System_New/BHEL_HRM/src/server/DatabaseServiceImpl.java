@@ -2,12 +2,12 @@ package server;
 
 import common.interfaces.DatabaseService;
 import common.models.*;
+import java.io.IOException;
+import java.nio.file.*;
 import java.rmi.RemoteException;
 import java.rmi.server.RMIClientSocketFactory;
 import java.rmi.server.RMIServerSocketFactory;
 import java.rmi.server.UnicastRemoteObject;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,15 +15,18 @@ import java.util.List;
  * Implementation of the Database Service.
  * Provides remote access to all CSV data operations with comprehensive auditing.
  * All write operations are synchronized for thread-safe concurrent access.
+ * Also handles receiving replicated data when running as a backup server.
  */
 public class DatabaseServiceImpl extends UnicastRemoteObject implements DatabaseService {
 
     private final CSVDataStore dataStore;
+    private final String dataDir;
 
-    public DatabaseServiceImpl(CSVDataStore dataStore, int port,
+    public DatabaseServiceImpl(CSVDataStore dataStore, String dataDir, int port,
                               RMIClientSocketFactory csf, RMIServerSocketFactory ssf) throws RemoteException {
         super(port, csf, ssf);
         this.dataStore = dataStore;
+        this.dataDir = dataDir;
     }
 
     // ==================== USER OPERATIONS ====================
@@ -257,5 +260,43 @@ public class DatabaseServiceImpl extends UnicastRemoteObject implements Database
         dataStore.addAuditLog(userId, username, role, action, targetTable, targetId, details);
         System.out.println("[AUDIT] " + username + " (" + role + ") - " + action + " on " + 
                           targetTable + " (#" + targetId + "): " + details);
+    }
+
+    // ==================== REPLICATION (Fault Tolerance) ====================
+
+    @Override
+    public boolean ping() throws RemoteException {
+        return true;
+    }
+
+    @Override
+    public synchronized void replicateAppend(String fileName, String csvLine) throws RemoteException {
+        try {
+            Path path = Paths.get(dataDir, fileName);
+            if (!Files.exists(path)) {
+                System.err.println("[REPLICATION] File not found, skipping: " + fileName);
+                return;
+            }
+            Files.writeString(path, csvLine + "\n", StandardOpenOption.APPEND);
+            System.out.println("[REPLICATION] APPEND -> " + fileName);
+        } catch (IOException e) {
+            System.err.println("[REPLICATION] Append error: " + e.getMessage());
+            throw new RemoteException("Replication append failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public synchronized void replicateWrite(String fileName, String header, List<String> dataLines) throws RemoteException {
+        try {
+            Path path = Paths.get(dataDir, fileName);
+            List<String> allLines = new ArrayList<>();
+            allLines.add(header);
+            allLines.addAll(dataLines);
+            Files.write(path, allLines);
+            System.out.println("[REPLICATION] WRITE  -> " + fileName + " (" + dataLines.size() + " records)");
+        } catch (IOException e) {
+            System.err.println("[REPLICATION] Write error: " + e.getMessage());
+            throw new RemoteException("Replication write failed: " + e.getMessage());
+        }
     }
 }

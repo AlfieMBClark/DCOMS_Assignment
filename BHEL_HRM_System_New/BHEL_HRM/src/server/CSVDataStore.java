@@ -1,5 +1,6 @@
 package server;
 
+import common.interfaces.DatabaseService;
 import common.models.*;
 import java.io.*;
 import java.nio.file.*;
@@ -10,10 +11,17 @@ import java.util.stream.Collectors;
  * Centralized CSV data storage manager.
  * All methods are synchronized to prevent concurrent write conflicts.
  * CSV files are stored in the /data directory.
+ *
+ * FAULT TOLERANCE: When a replicator (backup DatabaseService) is configured,
+ * every write operation is automatically forwarded to the backup.
+ * Replication is fire-and-forget — if backup is unreachable, primary continues.
  */
 public class CSVDataStore {
 
     private final String dataDir;
+
+    /** Remote reference to backup's DatabaseService for replication. Null if standalone. */
+    private volatile DatabaseService replicator;
 
     // CSV file names
     private static final String USERS_FILE = "users.csv";
@@ -30,7 +38,19 @@ public class CSVDataStore {
         initializeFiles();
     }
 
-    /** Create CSV files with headers if they don't exist */
+    // ==================== REPLICATION ====================
+
+    public void setReplicator(DatabaseService replicator) {
+        this.replicator = replicator;
+        System.out.println("[CSVDataStore] Replication " + (replicator != null ? "ENABLED" : "DISABLED"));
+    }
+
+    public boolean isReplicating() {
+        return replicator != null;
+    }
+
+    // ==================== INITIALIZATION ====================
+
     private void initializeFiles() {
         try {
             Files.createDirectories(Paths.get(dataDir));
@@ -60,7 +80,7 @@ public class CSVDataStore {
     private synchronized List<String> readLines(String fileName) {
         try {
             List<String> lines = Files.readAllLines(Paths.get(dataDir, fileName));
-            if (lines.size() > 0) lines.remove(0); // remove header
+            if (lines.size() > 0) lines.remove(0);
             return lines;
         } catch (IOException e) {
             System.err.println("[CSVDataStore] Error reading " + fileName + ": " + e.getMessage());
@@ -77,6 +97,12 @@ public class CSVDataStore {
         } catch (IOException e) {
             System.err.println("[CSVDataStore] Error writing " + fileName + ": " + e.getMessage());
         }
+        // Replicate full file to backup
+        DatabaseService rep = this.replicator;
+        if (rep != null) {
+            try { rep.replicateWrite(fileName, header, dataLines); }
+            catch (Exception e) { System.err.println("[REPLICATION] Backup unreachable (WRITE " + fileName + ")"); }
+        }
     }
 
     private synchronized void appendLine(String fileName, String line) {
@@ -84,6 +110,12 @@ public class CSVDataStore {
             Files.writeString(Paths.get(dataDir, fileName), line + "\n", StandardOpenOption.APPEND);
         } catch (IOException e) {
             System.err.println("[CSVDataStore] Error appending to " + fileName + ": " + e.getMessage());
+        }
+        // Replicate append to backup
+        DatabaseService rep = this.replicator;
+        if (rep != null) {
+            try { rep.replicateAppend(fileName, line); }
+            catch (Exception e) { System.err.println("[REPLICATION] Backup unreachable (APPEND " + fileName + ")"); }
         }
     }
 
@@ -217,20 +249,15 @@ public class CSVDataStore {
     }
 
     public synchronized int addEmployee(Employee emp) {
-        // Check for duplicate IC
         if (getEmployeeByIC(emp.getIcPassport()) != null) return -1;
-
         int id = getNextId(EMPLOYEES_FILE);
         emp.setEmployeeId(id);
         if (emp.getDateJoined() == null) {
             emp.setDateJoined(java.time.LocalDate.now().toString());
         }
         appendLine(EMPLOYEES_FILE, emp.toCSV());
-
-        // Initialize leave balances for current year
         int year = java.time.Year.now().getValue();
         initializeLeaveBalances(id, year);
-
         return id;
     }
 
@@ -302,7 +329,7 @@ public class CSVDataStore {
             if (line.trim().isEmpty()) continue;
             FamilyMember fm = FamilyMember.fromCSV(line);
             if (fm != null && fm.getFamilyId() == familyId && fm.getEmployeeId() == employeeId) {
-                found = true; // skip this line (delete)
+                found = true;
             } else {
                 newLines.add(line);
             }
@@ -312,6 +339,7 @@ public class CSVDataStore {
         }
         return found;
     }
+
     public synchronized boolean removeFamilyMember(int familyId) {
         List<String> lines = readLines(FAMILY_FILE);
         List<String> newLines = new ArrayList<>();
@@ -330,6 +358,7 @@ public class CSVDataStore {
         }
         return found;
     }
+
     // ==================== LEAVE BALANCE OPERATIONS ====================
 
     public synchronized void initializeLeaveBalances(int employeeId, int year) {
