@@ -216,11 +216,11 @@ This opens a client that connects directly to Laptop A.
 
 ## Test Accounts
 
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin123` | Administrator |
-| `hr1` | `hr1234` | HR Staff |
-| `ahmad.ibrahim` | `emp123` | Employee |
+| Username        | Password   | Role          |
+|-----------------|------------|---------------|
+| `admin`         | `admin123` | Administrator |
+| `hr1`           | `hr1234`   | HR Staff      |
+| `ahmad.ibrahim` | `emp123`   | Employee      |
 
 ### Quick Test
 
@@ -254,16 +254,16 @@ This opens a client that connects directly to Laptop A.
 
 All data is stored in CSV format in the `data/` directory:
 
-| File | Contents |
-|------|----------|
-| `users.csv` | Login accounts |
-| `employees.csv` | Employee records |
-| `leave_applications.csv` | Leave applications |
-| `leave_balances.csv` | Leave balances per year |
-| `family_members.csv` | Employee family info |
-| `payroll_records.csv` | Salary records |
-| `profile_updates.csv` | Profile change requests |
-| `audit_log.csv` | Complete activity log |
+| File                     | Contents                |
+|--------------------------|-------------------------|
+| `users.csv`              | Login accounts          |
+| `employees.csv`          | Employee records        |
+| `leave_applications.csv` | Leave applications      |
+| `leave_balances.csv`     | Leave balances per year |
+| `family_members.csv`     | Employee family info    |
+| `payroll_records.csv`    | Salary records          |
+| `profile_updates.csv`    | Profile change requests |
+| `audit_log.csv`          | Complete activity log   |
 
 View the audit log:
 
