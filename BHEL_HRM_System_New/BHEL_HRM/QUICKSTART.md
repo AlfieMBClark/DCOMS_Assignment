@@ -39,7 +39,7 @@ This opens 3 new windows:
 
 The login screen should appear.
 
-### Running Components Individually
+### Running Components Individually ###
 
 ```batch
 .\run-database.bat        # Terminal 1: Database Server
@@ -49,27 +49,27 @@ The login screen should appear.
 
 ---
 
-## Multi-Laptop Setup (Fault Tolerance Demo)
+## Multi-Laptop Setup (Fault Tolerance Demo) ##
 
 This is where the system demonstrates **primary-backup fault tolerance**. You need 2 or 3 laptops on the **same WiFi network**.
 
 ### What Each Laptop Does
 
-| Laptop | Role | What it runs | Bat file |
-|--------|------|-------------|----------|
-| **A** | Primary | Primary DB + Primary App Server + Client (optional) | `run-all-primary.bat` |
-| **B** | Backup | Backup DB + Backup App Server + Client with failover | `run-backup.bat` |
-| **C** | Extra client (optional) | Just a client, no server | `run-client-only.bat` |
+| Laptop| Role                    | What it runs                                         | Bat file              |
+|-------|-------------------------|------------------------------------------------------|----------             |
+| **A** | Primary                 | Primary DB + Primary App Server + Client (optional)  | `run-all-primary.bat` |
+| **B** | Backup                  | Backup DB + Backup App Server + Client with failover | `run-backup.bat`      |
+| **C** | Extra client (optional) | Just a client, no server                             | `run-client-only.bat` |
 
 ### How It Works
 
 ```
 Laptop A (Primary)                    Laptop B (Backup)
-┌─────────────────────┐              ┌─────────────────────┐
+┌─────────────────────┐               ┌─────────────────────┐
 │ Database:1098       │── replicates─→│ Database:2098       │
-│ App Server:1099     │              │ App Server:2099      │
-└─────────────────────┘              │ Client (failover)    │
-                                     └─────────────────────┘
+│ App Server:1099     │               │ App Server:2099     │
+└─────────────────────┘               │ Client (failover)   │
+                                      └─────────────────────┘
 
 Laptop C (optional)
 ┌─────────────────────┐
@@ -83,7 +83,7 @@ Laptop C (optional)
 
 ---
 
-### Step-by-Step Setup
+##### Step-by-Step Setup #####
 
 #### Step 0: Find Your IP Addresses
 
