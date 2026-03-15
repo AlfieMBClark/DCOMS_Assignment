@@ -2,3 +2,16 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 1,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098,2026-03-14T16:42:27.773510800
 2,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-14T16:42:30.585477700
 3,1,admin,ADMIN,LOGIN,users,1,User logged in,2026-03-14T16:42:53.079082
+4,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098,2026-03-15T11:25:27.322346800
+5,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-15T11:25:29.472421200
+6,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-15T11:26:19.310356200
+7,2,hr1,HR,REGISTER_EMPLOYEE,employees,2,"Badr Abd (IC: B123456), user: badr.abd",2026-03-15T11:27:28.432715300
+8,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-15T11:28:36.329425
+9,4,badr.abd,EMPLOYEE,REQUEST_PROFILE_UPDATE,employees,2,email: 'Badr@gmail.com' -> 'Badr45@gmail.com',2026-03-15T11:36:53.422584700
+10,2,hr1,HR,APPROVE_PROFILE_UPDATE,profile_updates,1,emp#2: email = Badr45@gmail.com,2026-03-15T11:37:05.587309500
+11,1,admin,ADMIN,LOGIN,users,1,User logged in,2026-03-15T11:37:42.738978700
+12,2,hr1,HR,GENERATE_PAYROLL,payroll_records,1,emp#1 1/2026: RM3500.0 -> RM3090.5,2026-03-15T11:38:24.120399700
+13,2,hr1,HR,GENERATE_REPORT,employees,1,Yearly report for Ahmad Ibrahim (2026),2026-03-15T11:38:48.428349100
+14,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-15T11:39:11.474091700
+15,4,badr.abd,EMPLOYEE,LOGOUT,users,4,User logged out,2026-03-15T11:39:13.494239
+16,1,admin,ADMIN,LOGOUT,users,1,User logged out,2026-03-15T11:39:17.580367700
