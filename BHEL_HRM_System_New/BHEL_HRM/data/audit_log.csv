@@ -108,3 +108,20 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 107,1,admin,ADMIN,UPDATE_USER,users,3,Updated: testemp1 [EMPLOYEE] active=true,2026-03-16T14:02:16.625618100
 108,3,testemp1,EMPLOYEE,LOGIN,users,3,User logged in,2026-03-16T14:02:44.238169400
 109,3,testemp1,EMPLOYEE,LOGOUT,users,3,User logged out,2026-03-16T14:03:02.819430200
+110,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [STANDALONE / BACKUP],2026-03-16T14:06:00.501290500
+111,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T14:06:02.505099900
+112,0,ahmad.ibrahim,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: ahmad.ibrahim,2026-03-16T14:06:20.567527100
+113,0,ahmad.ibrahim,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: ahmad.ibrahim,2026-03-16T14:06:26.246474100
+114,0,ahmad.ibrahim,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: ahmad.ibrahim,2026-03-16T14:06:43.353515300
+115,0,ahmad.ibrahim,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: ahmad.ibrahim,2026-03-16T14:06:53.775306400
+116,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T14:07:08.944461600
+117,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T14:07:11.557953700
+118,0,ahmad.ibrahim,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: ahmad.ibrahim,2026-03-16T14:07:30.590262800
+119,0,ahmad.ibrahim,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: ahmad.ibrahim,2026-03-16T14:07:36.538149900
+120,3,testemp1,EMPLOYEE,LOGIN,users,3,User logged in,2026-03-16T14:07:53.385926700
+121,3,testemp1,EMPLOYEE,LOGOUT,users,3,User logged out,2026-03-16T14:09:06.773570800
+122,1,admin,ADMIN,LOGIN,users,1,User logged in,2026-03-16T14:09:14.836484400
+123,1,admin,ADMIN,UPDATE_USER,users,3,Updated: ahmad.ibrahim [EMPLOYEE] active=true,2026-03-16T14:09:41.666151400
+124,1,admin,ADMIN,LOGOUT,users,1,User logged out,2026-03-16T14:09:45.298958100
+125,3,ahmad.ibrahim,EMPLOYEE,LOGIN,users,3,User logged in,2026-03-16T14:09:58.656488200
+126,3,ahmad.ibrahim,EMPLOYEE,LOGOUT,users,3,User logged out,2026-03-16T14:10:51.861003700
