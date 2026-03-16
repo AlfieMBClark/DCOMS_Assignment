@@ -1,0 +1,22 @@
+log_id,user_id,username,role,action,target_table,target_id,details,timestamp
+1,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 2098 [STANDALONE / BACKUP],2026-03-16T11:11:36.259578400
+2,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 2099,2026-03-16T11:11:38.674943
+3,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 2098 [STANDALONE / BACKUP],2026-03-16T11:13:49.140185800
+4,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 2099,2026-03-16T11:13:51.740061100
+31,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:14:01.482277400
+32,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-16T11:14:29.354451500
+33,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:14:38.749420800
+34,0,badr.abd,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: badr.abd,2026-03-16T11:16:39.178238800
+35,0,badr.abd,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: badr.abd,2026-03-16T11:16:45.099362300
+36,3,ahmad.ibrahim,EMPLOYEE,LOGIN,users,3,User logged in,2026-03-16T11:17:16.627573100
+35,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:19:00.455809800
+37,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 2098 [STANDALONE / BACKUP],2026-03-16T11:25:16.199053600
+38,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 2099,2026-03-16T11:25:18.753031700
+37,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:25:25.500081500
+38,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:26:52.471358500
+39,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-16T11:27:06.115888500
+40,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:29:05.647628800
+41,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T11:29:09.196540500
+40,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:29:53.442708900
+41,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:30:24.236420300
+42,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T11:30:28.213201300
