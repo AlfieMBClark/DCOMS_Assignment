@@ -41,6 +41,7 @@ if %ERRORLEVEL% NEQ 0 (
 REM Step 2: Start Primary Database Server (with replication to backup)
 echo Step 2: Starting Primary Database Server (port %PRIMARY_DB_PORT%)...
 start "Primary DB Server" cmd /k "java -cp out/ server.DatabaseServer %PRIMARY_DB_PORT% data --backup %BACKUP_IP%:%BACKUP_DB_PORT%"
+timeout /t 3 /nobreak >nul
 
 REM Step 3: Start Primary Application Server
 echo Step 3: Starting Primary App Server (port %PRIMARY_APP_PORT%)...
