@@ -20,3 +20,5 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 40,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:29:53.442708900
 41,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:30:24.236420300
 42,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T11:30:28.213201300
+43,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 2098 [STANDALONE / BACKUP],2026-03-16T11:41:24.901766800
+44,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 2099,2026-03-16T11:41:26.752566300
