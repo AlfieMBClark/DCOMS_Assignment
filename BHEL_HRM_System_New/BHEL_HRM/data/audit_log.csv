@@ -152,3 +152,8 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 151,2,hr1,HR,APPROVE_LEAVE,leave_applications,4,Approved EMERGENCY for Badr Abd,2026-03-16T15:00:47.915733600
 152,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T15:00:49.821928200
 153,4,badr.abd,EMPLOYEE,LOGOUT,users,4,User logged out,2026-03-16T15:03:26.553145
+154,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [STANDALONE / BACKUP],2026-03-16T22:05:20.706575800
+155,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T22:05:23.539266500
+156,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T22:05:31.999299400
+157,2,hr1,HR,REGISTER_EMPLOYEE,employees,4,"Alfie Clark (IC: 010203-05-6789), user: alfie.clark",2026-03-16T22:09:19.331136500
+158,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T22:13:38.828766500

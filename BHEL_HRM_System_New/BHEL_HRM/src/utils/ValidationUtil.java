@@ -44,11 +44,12 @@ public class ValidationUtil {
         return email.matches("[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}");
     }
 
-    /** Validate phone number (Malaysian format or general). */
+    /** Validate phone number (Malaysian format only: +60 followed by 10-11 digits). */
     public static boolean validatePhone(String phone) {
         if (phone == null || phone.trim().isEmpty()) return true;
         String clean = phone.replaceAll("[\\s\\-()]", "");
-        return clean.matches("\\+?\\d{8,15}");
+        // Must be +60 followed by 10-11 digits (Malaysian format)
+        return clean.matches("\\+60\\d{10,11}");
     }
 
     /** Validate date format (YYYY-MM-DD). */

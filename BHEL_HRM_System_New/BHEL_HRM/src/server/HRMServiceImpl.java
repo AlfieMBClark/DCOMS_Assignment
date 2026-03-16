@@ -193,6 +193,8 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
             throw new RemoteException("Invalid IC/Passport format");
         if (emp.getEmail() != null && !ValidationUtil.validateEmail(emp.getEmail()))
             throw new RemoteException("Invalid email format");
+        if (emp.getPhone() != null && !ValidationUtil.validatePhone(emp.getPhone()))
+            throw new RemoteException("Invalid phone format. Phone must be +60 followed by 10-11 digits (e.g., +601123456789)");
 
         int empId = dbService.addEmployee(emp);
         if (empId == -1)

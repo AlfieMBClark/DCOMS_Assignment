@@ -4,3 +4,4 @@ user_id,username,password_hash,role,employee_id,is_active
 3,ahmad.ibrahim,bUAb/GI/nzTWDPbbgBIITA==:TYpLZSLkbmqM+2dGUA4O+5tcFQ0Jh/Hk4PaSDLde56U=,EMPLOYEE,1,1
 4,badr.abd,kctTJNnNbvG1XeT0p2BtSQ==:yxIkc9cqIEoNlUaV2Hl8YbsxRiFn13IbKJ1JpyVMau0=,EMPLOYEE,2,1
 5,ten.khang,IxgMUSFkSqnx89ZZkrLwog==:rjeFzI1zWvex9b4Mv6eZduBM8YahNSaFyeKsdn80W0g=,EMPLOYEE,3,1
+6,alfie.clark,LR6BtfgrHkluxLccHDmipQ==:RICZM5EcaqGD7/fMXLUQhEjDyVzsfnMDwYuJ8jm5nBI=,EMPLOYEE,4,1
