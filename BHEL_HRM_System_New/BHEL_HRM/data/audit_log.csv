@@ -53,3 +53,5 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 52,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T12:28:25.630174400
 53,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [PRIMARY],2026-03-16T12:36:57.494430
 54,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099 (SSL),2026-03-16T12:36:59.781856300
+55,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [STANDALONE / BACKUP],2026-03-16T12:41:23.789253100
+56,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T12:41:26.507773200
