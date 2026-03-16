@@ -64,7 +64,14 @@ public class ServerMain {
             // Connect to Database Server
             String dbServiceURL = "rmi://" + dbHost + ":" + dbPort + "/DatabaseService";
             System.out.println("  Connecting to: " + dbServiceURL);
-            DatabaseService dbService = (DatabaseService) java.rmi.Naming.lookup(dbServiceURL);
+            Registry dbRegistry;
+            if (sslEnabled) {
+                dbRegistry = LocateRegistry.getRegistry(dbHost, dbPort, new javax.rmi.ssl.SslRMIClientSocketFactory());
+                System.out.println("[SSL] Using SSL to connect to Database Server");
+            } else {
+                dbRegistry = LocateRegistry.getRegistry(dbHost, dbPort);
+            }
+            DatabaseService dbService = (DatabaseService) dbRegistry.lookup("DatabaseService");
             System.out.println("  Connected to Database Server successfully!");
             
             AuditLogger auditLogger = new AuditLogger(dbService);
@@ -75,7 +82,7 @@ public class ServerMain {
 
             if (sslEnabled) {
                 csf = new SslRMIClientSocketFactory();
-                ssf = new SslRMIServerSocketFactory(null, null, true);
+                ssf = new SslRMIServerSocketFactory(null, null, false);
                 System.out.println("[SSL] Using SSL/TLS socket factories");
                 System.out.println("[SSL] Protocol: TLSv1.2/TLSv1.3");
             }

@@ -114,7 +114,13 @@ public class ClientMain {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 System.out.println("[CLIENT] Connecting to " + label + " (" + host + ":" + port + ") attempt " + attempt + "...");
-                Registry registry = LocateRegistry.getRegistry(host, port);
+                Registry registry;
+                if ("true".equals(System.getProperty("ssl.enabled"))) {
+                    registry = LocateRegistry.getRegistry(host, port, new javax.rmi.ssl.SslRMIClientSocketFactory());
+                    System.out.println("[CLIENT] Using SSL/TLS connection");
+                } else {
+                    registry = LocateRegistry.getRegistry(host, port);
+                }
                 AuthService rawAuth = (AuthService) registry.lookup("AuthService");
                 HRMService rawHRM = (HRMService) registry.lookup("HRMService");
                 PRSService rawPRS = (PRSService) registry.lookup("PRSService");

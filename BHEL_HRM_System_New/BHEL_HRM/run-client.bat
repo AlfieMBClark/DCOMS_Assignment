@@ -27,8 +27,6 @@ set JAVA_ARGS=-cp out/ client.ClientMain %HOST% %PORT%
 
 if "%SSL_MODE%"=="/ssl" (
     set JAVA_ARGS=-Dssl.enabled=true ^
-                  -Djavax.net.ssl.keyStore=certs/client.keystore ^
-                  -Djavax.net.ssl.keyStorePassword=bhel2024 ^
                   -Djavax.net.ssl.trustStore=certs/client.truststore ^
                   -Djavax.net.ssl.trustStorePassword=bhel2024 ^
                   %JAVA_ARGS%

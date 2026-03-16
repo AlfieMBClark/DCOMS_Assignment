@@ -81,7 +81,7 @@ public class DatabaseServer {
 
             if (sslEnabled) {
                 csf = new SslRMIClientSocketFactory();
-                ssf = new SslRMIServerSocketFactory(null, null, true);
+                ssf = new SslRMIServerSocketFactory(null, null, false);
                 System.out.println("[SSL] Using SSL/TLS socket factories");
             }
 
