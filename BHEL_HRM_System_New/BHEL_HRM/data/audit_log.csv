@@ -25,3 +25,6 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 24,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T10:10:46.967891
 25,2,hr1,HR,GENERATE_REPORT,employees,1,Yearly report for Ahmad Ibrahim (2026),2026-03-16T10:11:14.220532900
 26,2,hr1,HR,GENERATE_REPORT,employees,2,Yearly report for Badr Abd (2026),2026-03-16T10:11:16.780225
+27,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T10:14:47.097403900
+28,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-16T10:14:57.240629100
+29,4,badr.abd,EMPLOYEE,LOGOUT,users,4,User logged out,2026-03-16T10:15:01.667143500
