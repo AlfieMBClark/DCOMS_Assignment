@@ -24,6 +24,6 @@ echo  Connecting to %SERVER_IP%:%SERVER_PORT%
 echo ============================================
 echo.
 
-java -cp out/ client.ClientMain %SERVER_IP% %SERVER_PORT%
+java -Dssl.enabled=true -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ client.ClientMain %SERVER_IP% %SERVER_PORT%
 
 pause

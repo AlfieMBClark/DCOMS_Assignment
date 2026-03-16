@@ -40,17 +40,17 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Step 2: Start Backup Database Server
 echo Step 2: Starting Backup Database Server (port %BACKUP_DB_PORT%)...
-start "Backup DB Server" cmd /k "java -cp out/ server.DatabaseServer %BACKUP_DB_PORT% data_backup"
+start "Backup DB Server" cmd /k "java -Dssl.enabled=true -Djavax.net.ssl.keyStore=certs/server.keystore -Djavax.net.ssl.keyStorePassword=bhel2024 -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ server.DatabaseServer %BACKUP_DB_PORT% data_backup"
 timeout /t 3 /nobreak >nul
 
 REM Step 3: Start Backup Application Server
 echo Step 3: Starting Backup App Server (port %BACKUP_APP_PORT%)...
-start "Backup App Server" cmd /k "java -cp out/ server.ServerMain %BACKUP_APP_PORT% localhost %BACKUP_DB_PORT%"
+start "Backup App Server" cmd /k "java -Dssl.enabled=true -Djavax.net.ssl.keyStore=certs/server.keystore -Djavax.net.ssl.keyStorePassword=bhel2024 -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ server.ServerMain %BACKUP_APP_PORT% localhost %BACKUP_DB_PORT%"
 timeout /t 2 /nobreak >nul
 
 REM Step 4: Start Client with failover
 echo Step 4: Starting Client (failover: primary=%PRIMARY_IP%:%PRIMARY_APP_PORT%, backup=localhost:%BACKUP_APP_PORT%)...
-start "BHEL Client (Failover)" cmd /k "java -cp out/ client.ClientMain %PRIMARY_IP% %PRIMARY_APP_PORT% localhost %BACKUP_APP_PORT%"
+start "BHEL Client (Failover)" cmd /k "java -Dssl.enabled=true -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ client.ClientMain %PRIMARY_IP% %PRIMARY_APP_PORT% localhost %BACKUP_APP_PORT%"
 
 echo.
 echo ============================================

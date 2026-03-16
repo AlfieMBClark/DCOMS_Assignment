@@ -40,17 +40,17 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Step 2: Start Primary Database Server (with replication to backup)
 echo Step 2: Starting Primary Database Server (port %PRIMARY_DB_PORT%)...
-start "Primary DB Server" cmd /k "java -cp out/ server.DatabaseServer %PRIMARY_DB_PORT% data --backup %BACKUP_IP%:%BACKUP_DB_PORT%"
+start "Primary DB Server" cmd /k "java -Dssl.enabled=true -Djavax.net.ssl.keyStore=certs/server.keystore -Djavax.net.ssl.keyStorePassword=bhel2024 -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ server.DatabaseServer %PRIMARY_DB_PORT% data --backup %BACKUP_IP%:%BACKUP_DB_PORT%"
 timeout /t 3 /nobreak >nul
 
 REM Step 3: Start Primary Application Server
 echo Step 3: Starting Primary App Server (port %PRIMARY_APP_PORT%)...
-start "Primary App Server" cmd /k "java -cp out/ server.ServerMain %PRIMARY_APP_PORT% localhost %PRIMARY_DB_PORT%"
+start "Primary App Server" cmd /k "java -Dssl.enabled=true -Djavax.net.ssl.keyStore=certs/server.keystore -Djavax.net.ssl.keyStorePassword=bhel2024 -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ server.ServerMain %PRIMARY_APP_PORT% localhost %PRIMARY_DB_PORT%"
 timeout /t 2 /nobreak >nul
 
 REM Step 4: Start Client (optional - you can also run from Laptop B or C)
 echo Step 4: Starting Client...
-start "BHEL Client" cmd /k "java -cp out/ client.ClientMain localhost %PRIMARY_APP_PORT%"
+start "BHEL Client" cmd /k "java -Dssl.enabled=true -Djavax.net.ssl.trustStore=certs/client.truststore -Djavax.net.ssl.trustStorePassword=bhel2024 -cp out/ client.ClientMain localhost %PRIMARY_APP_PORT%"
 echo.
 echo ============================================
 echo  Primary laptop is ready!
