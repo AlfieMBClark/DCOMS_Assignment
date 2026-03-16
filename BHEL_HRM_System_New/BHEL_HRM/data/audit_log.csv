@@ -28,3 +28,16 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 27,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T10:14:47.097403900
 28,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-16T10:14:57.240629100
 29,4,badr.abd,EMPLOYEE,LOGOUT,users,4,User logged out,2026-03-16T10:15:01.667143500
+30,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [PRIMARY],2026-03-16T11:13:59.045378800
+31,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:14:01.482277400
+32,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-16T11:14:29.354451500
+33,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:14:38.749420800
+34,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [PRIMARY],2026-03-16T11:18:58.159757800
+35,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:19:00.455809800
+36,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [PRIMARY],2026-03-16T11:25:23.165862900
+37,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:25:25.500081500
+38,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:26:52.471358500
+39,4,badr.abd,EMPLOYEE,LOGIN,users,4,User logged in,2026-03-16T11:27:06.115888500
+40,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-16T11:29:53.442708900
+41,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T11:30:24.236420300
+42,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T11:30:28.213201300
