@@ -133,7 +133,12 @@ public class DatabaseServer {
 
             while (true) {
                 try {
-                    Registry backupRegistry = LocateRegistry.getRegistry(backupHost, backupPort);
+                    Registry backupRegistry;
+                    if ("true".equals(System.getProperty("ssl.enabled"))) {
+                        backupRegistry = LocateRegistry.getRegistry(backupHost, backupPort, new javax.rmi.ssl.SslRMIClientSocketFactory());
+                    } else {
+                        backupRegistry = LocateRegistry.getRegistry(backupHost, backupPort);
+                    }
                     DatabaseService backupDb =
                         (DatabaseService) backupRegistry.lookup("DatabaseService");
 

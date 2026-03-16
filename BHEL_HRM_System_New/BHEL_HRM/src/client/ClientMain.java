@@ -181,7 +181,12 @@ public class ClientMain {
             if (onBackup || backupHost == null) return false;
             System.out.println("[FAILOVER] Switching to backup: " + backupHost + ":" + backupPort);
             try {
-                Registry reg = LocateRegistry.getRegistry(backupHost, backupPort);
+                Registry reg;
+                if ("true".equals(System.getProperty("ssl.enabled"))) {
+                    reg = LocateRegistry.getRegistry(backupHost, backupPort, new javax.rmi.ssl.SslRMIClientSocketFactory());
+                } else {
+                    reg = LocateRegistry.getRegistry(backupHost, backupPort);
+                }
                 AuthService newAuth = (AuthService) reg.lookup("AuthService");
                 HRMService newHRM  = (HRMService) reg.lookup("HRMService");
                 PRSService newPRS  = (PRSService) reg.lookup("PRSService");
