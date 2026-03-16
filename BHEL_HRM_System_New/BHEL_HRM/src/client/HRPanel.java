@@ -61,9 +61,13 @@ public class HRPanel extends JPanel {
         }
 
         JButton regBtn = ClientMain.styledButton("  Register Employee  ", ClientMain.ACCENT_GREEN);
+        JButton clearBtn = ClientMain.subtleButton("  Clear Form  ");
         JLabel res = new JLabel(" "); res.setFont(new Font("Segoe UI",Font.PLAIN,12));
-        int lr=(labels.length/2)+2; g.gridx=0; g.gridy=lr*2; g.gridwidth=4; g.insets=new Insets(16,8,6,8); card.add(regBtn,g);
-        g.gridy=lr*2+1; g.insets=new Insets(4,8,4,8); card.add(res,g); panel.add(card);
+        int lr=(labels.length/2)+2; g.gridx=0; g.gridy=lr*2; g.gridwidth=2; g.insets=new Insets(16,8,6,8); card.add(regBtn,g);
+        g.gridx=2; card.add(clearBtn,g);
+        g.gridx=0; g.gridy=lr*2+1; g.gridwidth=4; g.insets=new Insets(4,8,4,8); card.add(res,g); panel.add(card);
+
+        clearBtn.addActionListener(e -> { for (JTextField tf:fields) tf.setText(""); res.setText(" "); });
 
         regBtn.addActionListener(e -> { try {
             Employee emp = new Employee(); emp.setFirstName(fields[0].getText().trim()); emp.setLastName(fields[1].getText().trim());
@@ -76,7 +80,12 @@ public class HRPanel extends JPanel {
             res.setForeground(ClientMain.ACCENT_GREEN);
             res.setText("\u2713 Registered! ID:"+id+" | User: "+emp.getFirstName().toLowerCase()+"."+emp.getLastName().toLowerCase()+" | PW: IC without dashes");
             for (JTextField tf:fields) tf.setText("");
-        } catch (Exception ex) { res.setForeground(ClientMain.ACCENT_RED); res.setText("\u2717 "+ex.getMessage()); }});
+        } catch (Exception ex) { res.setForeground(ClientMain.ACCENT_RED); 
+            String msg = ex.getMessage();
+            if (msg != null && msg.contains(":")) { msg = msg.substring(msg.lastIndexOf(":")+1).trim(); }
+            if (msg == null || msg.isEmpty()) { msg = "Invalid input"; }
+            res.setText("\u2717 " + msg); 
+        }});
         return panel;
     }
 

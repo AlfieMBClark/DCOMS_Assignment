@@ -1,12 +1,16 @@
 package client;
 
 import common.models.*;
+import utils.ValidationUtil;
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.Year;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class EmployeePanel extends JPanel {
@@ -143,10 +147,29 @@ public class EmployeePanel extends JPanel {
 
         addBtn.addActionListener(e -> {
             JTextField nf = ClientMain.styledField(18); JComboBox<String> rb = new JComboBox<>(new String[]{"SPOUSE","CHILD","PARENT","SIBLING","OTHER"});
-            JTextField icf = ClientMain.styledField(18); JTextField df = ClientMain.styledField(18); df.setText("YYYY-MM-DD");
-            int r = JOptionPane.showConfirmDialog(this, new Object[]{"Name:", nf, "Relationship:", rb, "IC/Passport:", icf, "DOB:", df}, "Add Family Member", JOptionPane.OK_CANCEL_OPTION);
+            JTextField icf = ClientMain.styledField(18); JTextField df = ClientMain.styledField(18);
+            int r = JOptionPane.showConfirmDialog(this, new Object[]{"Name:", nf, "Relationship:", rb, "IC/Passport:", icf, "DOB (YYYY-MM-DD):", df}, "Add Family Member", JOptionPane.OK_CANCEL_OPTION);
             if (r == JOptionPane.OK_OPTION) { try {
-                FamilyMember fm = new FamilyMember(0, employeeId, nf.getText().trim(), (String)rb.getSelectedItem(), icf.getText().trim(), df.getText().trim().equals("YYYY-MM-DD") ? "" : df.getText().trim());
+                String dob = df.getText().trim();
+                
+                // Validate DOB format
+                if (!dob.isEmpty() && !dob.equals("DOB (YYYY-MM-DD)")) {
+                    if (!ValidationUtil.validateDate(dob)) {
+                        ClientMain.showError("Invalid date format. Use YYYY-MM-DD"); return;
+                    }
+                    // Check if date is valid and not in future
+                    LocalDate dobDate = LocalDate.parse(dob);
+                    if (dobDate.isAfter(LocalDate.now())) {
+                        ClientMain.showError("Date of birth cannot be in the future."); return;
+                    }
+                    // Check for reasonable age (not more than 130 years old)
+                    long age = ChronoUnit.YEARS.between(dobDate, LocalDate.now());
+                    if (age > 130) {
+                        ClientMain.showError("Please enter a valid date of birth."); return;
+                    }
+                }
+                
+                FamilyMember fm = new FamilyMember(0, employeeId, nf.getText().trim(), (String)rb.getSelectedItem(), icf.getText().trim(), dob.equals("DOB (YYYY-MM-DD)") ? "" : dob);
                 ClientMain.hrmService.addFamilyMember(fm, ClientMain.sessionToken); ClientMain.showSuccess("Added!"); new Thread(load).start();
             } catch (Exception ex) { ClientMain.showError("Error: " + ex.getMessage()); }}
         });
@@ -210,12 +233,33 @@ public class EmployeePanel extends JPanel {
             JComboBox<String> tb = new JComboBox<>(new String[]{"ANNUAL","MEDICAL","EMERGENCY"});
             JTextField sf = ClientMain.styledField(14); sf.setText(LocalDate.now().toString());
             JTextField ef = ClientMain.styledField(14); ef.setText(LocalDate.now().plusDays(1).toString());
-            JTextField df = ClientMain.styledField(6); df.setText("1"); JTextField rf = ClientMain.styledField(22);
-            int res = JOptionPane.showConfirmDialog(this, new Object[]{"Type:",tb,"Start:",sf,"End:",ef,"Days:",df,"Reason:",rf},"Apply",JOptionPane.OK_CANCEL_OPTION);
+            JLabel df = new JLabel("2"); df.setFont(new Font("Segoe UI", Font.BOLD, 12)); df.setForeground(ClientMain.FG_PRIMARY);
+            JTextField rf = ClientMain.styledField(22);
+            
+            // Auto-calculate days when dates change
+            DocumentListener dateListener = new DocumentListener() {
+                void updateDays() {
+                    try {
+                        LocalDate start = LocalDate.parse(sf.getText().trim());
+                        LocalDate end = LocalDate.parse(ef.getText().trim());
+                        if (end.isBefore(start)) { df.setText("Invalid"); df.setForeground(ClientMain.ACCENT_RED); }
+                        else { long days = ChronoUnit.DAYS.between(start, end) + 1;
+                            df.setText(String.valueOf(days)); df.setForeground(ClientMain.FG_PRIMARY); }
+                    } catch (Exception ex) { df.setText("Invalid"); df.setForeground(ClientMain.ACCENT_RED); }
+                }
+                public void insertUpdate(DocumentEvent e) { updateDays(); }
+                public void removeUpdate(DocumentEvent e) { updateDays(); }
+                public void changedUpdate(DocumentEvent e) { updateDays(); }
+            };
+            sf.getDocument().addDocumentListener(dateListener);
+            ef.getDocument().addDocumentListener(dateListener);
+            
+            int res = JOptionPane.showConfirmDialog(this, new Object[]{"Type:",tb,"Start:",sf,"End:",ef,"Days:  ",df,"Reason:",rf},"Apply for Leave",JOptionPane.OK_CANCEL_OPTION);
             if (res == JOptionPane.OK_OPTION) { try {
                 LeaveApplication a = new LeaveApplication(); a.setEmployeeId(employeeId);
                 a.setLeaveType((String)tb.getSelectedItem()); a.setStartDate(sf.getText().trim()); a.setEndDate(ef.getText().trim());
-                a.setDaysRequested(Integer.parseInt(df.getText().trim())); a.setReason(rf.getText().trim());
+                int days = Integer.parseInt(df.getText().trim());
+                a.setDaysRequested(days); a.setReason(rf.getText().trim());
                 ClientMain.hrmService.applyForLeave(a, ClientMain.sessionToken); ClientMain.showSuccess("Submitted!"); new Thread(load).start();
             } catch (Exception ex) { ClientMain.showError("Error: " + ex.getMessage()); }}
         });
