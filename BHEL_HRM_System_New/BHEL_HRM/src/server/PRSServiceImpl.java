@@ -66,6 +66,9 @@ public class PRSServiceImpl extends UnicastRemoteObject implements PRSService {
         if (dbService.getPayrollRecord(employeeId, month, year) != null)
             throw new RemoteException("Payroll already exists for " + month + "/" + year);
 
+        if (dbService.getEmployee(employeeId) == null)
+        throw new RemoteException("Employee not found: " + employeeId);
+    
         // Simple payroll calculation
         double epf = basicSalary * 0.11;      // EPF 11%
         double socso = basicSalary * 0.005;    // SOCSO 0.5%
