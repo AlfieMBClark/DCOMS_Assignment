@@ -26,10 +26,10 @@ public class EmployeePanel extends JPanel {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setBackground(ClientMain.BG_PANEL);
         tabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tabs.addTab("  \u2302 My Profile  ", createProfileTab());
-        tabs.addTab("  \u263A Family Details  ", createFamilyTab());
-        tabs.addTab("  \u2637 Leave  ", createLeaveTab());
-        tabs.addTab("  \u2234 Payroll  ", createPayrollTab());
+        tabs.addTab("  My Profile  ", createProfileTab());
+        tabs.addTab("  Family Details  ", createFamilyTab());
+        tabs.addTab("  Leave  ", createLeaveTab());
+        tabs.addTab("  Payroll  ", createPayrollTab());
         add(tabs, BorderLayout.CENTER);
     }
 
@@ -78,7 +78,7 @@ public class EmployeePanel extends JPanel {
             lbl.setFont(new Font("Segoe UI", Font.BOLD, 10)); lbl.setForeground(ClientMain.FG_DIM);
             g.gridx = (i % 2) * 2; g.gridy = i / 2 * 2; card.add(lbl, g);
             fields[i] = ClientMain.styledField(20);
-            boolean editable = (i == 3 || i == 4);
+            boolean editable = false;
             fields[i].setEditable(editable);
             if (!editable) { fields[i].setBackground(ClientMain.BG_CARD); fields[i].setForeground(ClientMain.FG_DIM); }
             g.gridy = i / 2 * 2 + 1; card.add(fields[i], g);
@@ -87,7 +87,7 @@ public class EmployeePanel extends JPanel {
 
         JPanel btn = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0)); btn.setOpaque(false);
         btn.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
-        JButton refreshBtn = ClientMain.subtleButton("\u21BB Refresh");
+        JButton refreshBtn = ClientMain.subtleButton("Refresh");
         JButton emailBtn = ClientMain.styledButton("Request Email Update", ClientMain.ACCENT_BLUE);
         JButton phoneBtn = ClientMain.styledButton("Request Phone Update", ClientMain.ACCENT_BLUE);
         btn.add(refreshBtn); btn.add(emailBtn); btn.add(phoneBtn);
@@ -116,7 +116,13 @@ public class EmployeePanel extends JPanel {
         if (val != null && !val.trim().isEmpty()) {
             try { ClientMain.hrmService.requestProfileUpdate(employeeId, field, curr, val.trim(), ClientMain.sessionToken);
                 ClientMain.showSuccess("Update request submitted. Pending HR approval.");
-            } catch (Exception ex) { ClientMain.showError("Error: " + ex.getMessage()); }
+            } catch (Exception ex) { 
+                String errorMsg = ex.getMessage();
+                if (errorMsg != null && errorMsg.contains(":")) {
+                    errorMsg = errorMsg.substring(errorMsg.lastIndexOf(":") + 1).trim();
+                }
+                ClientMain.showError(errorMsg != null ? errorMsg : "An error occurred."); 
+            }
         }
     }
 
@@ -133,7 +139,7 @@ public class EmployeePanel extends JPanel {
         btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         JButton addBtn = ClientMain.styledButton("+ Add", ClientMain.ACCENT_GREEN);
         JButton removeBtn = ClientMain.styledButton("Remove", ClientMain.ACCENT_RED);
-        JButton refreshBtn = ClientMain.subtleButton("\u21BB Refresh");
+        JButton refreshBtn = ClientMain.subtleButton("Refresh");
         btn.add(addBtn); btn.add(removeBtn); btn.add(refreshBtn); panel.add(btn, BorderLayout.SOUTH);
 
         Runnable load = () -> { try {
@@ -213,7 +219,7 @@ public class EmployeePanel extends JPanel {
 
         JPanel btn = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); btn.setOpaque(false); btn.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
         JButton applyBtn = ClientMain.styledButton("+ Apply for Leave", ClientMain.ACCENT_BLUE);
-        JButton refBtn = ClientMain.subtleButton("\u21BB Refresh");
+        JButton refBtn = ClientMain.subtleButton("Refresh");
         btn.add(applyBtn); btn.add(refBtn); panel.add(btn, BorderLayout.SOUTH);
 
         Runnable load = () -> { try {

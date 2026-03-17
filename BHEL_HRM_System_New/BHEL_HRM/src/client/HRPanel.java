@@ -17,11 +17,11 @@ public class HRPanel extends JPanel {
         JTabbedPane tabs = new JTabbedPane();
         tabs.setBackground(ClientMain.BG_PANEL); tabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
         tabs.addTab("  + Register  ", createRegisterTab());
-        tabs.addTab("  \u2263 Employees  ", createEmployeeListTab());
-        tabs.addTab("  \u270E Profile Updates  ", createProfileUpdatesTab());
-        tabs.addTab("  \u2637 Leave Apps  ", createLeaveTab());
-        tabs.addTab("  \u2234 Payroll  ", createPayrollTab());
-        tabs.addTab("  \u2630 Reports  ", createReportTab());
+        tabs.addTab("  Employees  ", createEmployeeListTab());
+        tabs.addTab("  Profile Updates  ", createProfileUpdatesTab());
+        tabs.addTab("  Leave Apps  ", createLeaveTab());
+        tabs.addTab("  Payroll  ", createPayrollTab());
+        tabs.addTab("  Reports  ", createReportTab());
         add(tabs, BorderLayout.CENTER);
     }
 
@@ -51,13 +51,48 @@ public class HRPanel extends JPanel {
         JLabel hdr = new JLabel("Register New Employee"); hdr.setFont(new Font("Segoe UI",Font.BOLD,18)); hdr.setForeground(ClientMain.FG_PRIMARY);
         g.gridx=0; g.gridy=0; g.gridwidth=4; g.insets=new Insets(0,8,12,8); card.add(hdr,g); g.gridwidth=1;
 
+        // Department and position mapping
+        java.util.Map<String, String[]> deptPositions = new java.util.LinkedHashMap<>();
+        deptPositions.put("Engineering", new String[]{"Software Developer", "Hardware Engineer"});
+        deptPositions.put("Manufacturing", new String[]{"Production Manager", "Machine Operator"});
+        deptPositions.put("Office", new String[]{"Office Manager", "Office Assistant"});
+        deptPositions.put("Sanitation", new String[]{"Janitor", "Cleaner"});
+
         String[] labels={"First Name *","Last Name *","IC/Passport *","Email","Phone","Department","Position"};
-        JTextField[] fields = new JTextField[labels.length];
+        JComponent[] components = new JComponent[labels.length];
+        
+        // Create text fields for basic info
+        for (int i=0;i<5;i++) {
+            components[i] = ClientMain.styledField(18);
+        }
+        
+        // Create dropdowns for Department and Position
+        JComboBox<String> deptCombo = new JComboBox<>(deptPositions.keySet().toArray(new String[0]));
+        deptCombo.setBackground(ClientMain.BG_INPUT); deptCombo.setForeground(ClientMain.FG_PRIMARY);
+        components[5] = deptCombo;
+        
+        JComboBox<String> posCombo = new JComboBox<>();
+        posCombo.setBackground(ClientMain.BG_INPUT); posCombo.setForeground(ClientMain.FG_PRIMARY);
+        components[6] = posCombo;
+        
+        // Update positions when department changes
+        deptCombo.addActionListener(e -> {
+            String selectedDept = (String) deptCombo.getSelectedItem();
+            String[] positions = deptPositions.get(selectedDept);
+            posCombo.removeAllItems();
+            for (String pos : positions) {
+                posCombo.addItem(pos);
+            }
+        });
+        // Initialize position dropdown with first department's positions
+        deptCombo.setSelectedIndex(0);
+        
+        // Add labels and components to card
         for (int i=0;i<labels.length;i++) {
             int col=(i%2)*2, row=(i/2)+1;
             JLabel l = new JLabel(labels[i].toUpperCase()); l.setFont(new Font("Segoe UI",Font.BOLD,10)); l.setForeground(ClientMain.FG_DIM);
             g.gridx=col; g.gridy=row*2; g.insets=new Insets(8,8,2,8); card.add(l,g);
-            fields[i]=ClientMain.styledField(18); g.gridy=row*2+1; g.insets=new Insets(0,8,4,8); card.add(fields[i],g);
+            g.gridy=row*2+1; g.insets=new Insets(0,8,4,8); card.add(components[i],g);
         }
 
         JButton regBtn = ClientMain.styledButton("  Register Employee  ", ClientMain.ACCENT_GREEN);
@@ -67,24 +102,31 @@ public class HRPanel extends JPanel {
         g.gridx=2; card.add(clearBtn,g);
         g.gridx=0; g.gridy=lr*2+1; g.gridwidth=4; g.insets=new Insets(4,8,4,8); card.add(res,g); panel.add(card);
 
-        clearBtn.addActionListener(e -> { for (JTextField tf:fields) tf.setText(""); res.setText(" "); });
+        clearBtn.addActionListener(e -> { 
+            for (int i=0;i<5;i++) ((JTextField)components[i]).setText(""); 
+            deptCombo.setSelectedIndex(0);
+            res.setText(" "); 
+        });
 
         regBtn.addActionListener(e -> { try {
-            Employee emp = new Employee(); emp.setFirstName(fields[0].getText().trim()); emp.setLastName(fields[1].getText().trim());
-            emp.setIcPassport(fields[2].getText().trim());
-            emp.setEmail(fields[3].getText().trim().isEmpty()?null:fields[3].getText().trim());
-            emp.setPhone(fields[4].getText().trim().isEmpty()?null:fields[4].getText().trim());
-            emp.setDepartment(fields[5].getText().trim().isEmpty()?null:fields[5].getText().trim());
-            emp.setPosition(fields[6].getText().trim().isEmpty()?null:fields[6].getText().trim());
+            Employee emp = new Employee(); 
+            emp.setFirstName(((JTextField)components[0]).getText().trim()); 
+            emp.setLastName(((JTextField)components[1]).getText().trim());
+            emp.setIcPassport(((JTextField)components[2]).getText().trim());
+            emp.setEmail(((JTextField)components[3]).getText().trim().isEmpty()?null:((JTextField)components[3]).getText().trim());
+            emp.setPhone(((JTextField)components[4]).getText().trim().isEmpty()?null:((JTextField)components[4]).getText().trim());
+            emp.setDepartment((String)deptCombo.getSelectedItem());
+            emp.setPosition((String)posCombo.getSelectedItem());
             int id = ClientMain.hrmService.registerEmployee(emp, ClientMain.sessionToken);
             res.setForeground(ClientMain.ACCENT_GREEN);
-            res.setText("\u2713 Registered! ID:"+id+" | User: "+emp.getFirstName().toLowerCase()+"."+emp.getLastName().toLowerCase()+" | PW: IC without dashes");
-            for (JTextField tf:fields) tf.setText("");
+            res.setText("Registered! ID:"+id+" | User: "+emp.getFirstName().toLowerCase()+"."+emp.getLastName().toLowerCase()+" | PW: IC without dashes");
+            for (int i=0;i<5;i++) ((JTextField)components[i]).setText("");
+            deptCombo.setSelectedIndex(0);
         } catch (Exception ex) { res.setForeground(ClientMain.ACCENT_RED); 
             String msg = ex.getMessage();
             if (msg != null && msg.contains(":")) { msg = msg.substring(msg.lastIndexOf(":")+1).trim(); }
             if (msg == null || msg.isEmpty()) { msg = "Invalid input"; }
-            res.setText("\u2717 " + msg); 
+            res.setText(msg); 
         }});
         return panel;
     }
@@ -112,8 +154,8 @@ public class HRPanel extends JPanel {
         DefaultTableModel model = new DefaultTableModel(cols,0){public boolean isCellEditable(int r,int c){return false;}};
         JTable table = styledTable(model); panel.add(wrap(table),BorderLayout.CENTER);
         JPanel bp = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0)); bp.setOpaque(false); bp.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
-        JButton ab = ClientMain.styledButton("\u2713 Approve",ClientMain.ACCENT_GREEN); JButton rb = ClientMain.styledButton("\u2717 Reject",ClientMain.ACCENT_RED);
-        JButton rfb = ClientMain.subtleButton("\u21BB Refresh"); bp.add(ab);bp.add(rb);bp.add(rfb); panel.add(bp,BorderLayout.SOUTH);
+        JButton ab = ClientMain.styledButton("Approve",ClientMain.ACCENT_GREEN); JButton rb = ClientMain.styledButton("Reject",ClientMain.ACCENT_RED);
+        JButton rfb = ClientMain.subtleButton("Refresh"); bp.add(ab);bp.add(rb);bp.add(rfb); panel.add(bp,BorderLayout.SOUTH);
         Runnable load = ()->{try{List<String[]> u=ClientMain.hrmService.getPendingProfileUpdates(ClientMain.sessionToken);SwingUtilities.invokeLater(()->{model.setRowCount(0);for(String[] r:u)model.addRow(new Object[]{r[0],r[1],r[2],r[3],r[4],r[5],r[6]});});}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}};
         new Thread(load).start(); rfb.addActionListener(e->new Thread(load).start());
         ab.addActionListener(e->{int row=table.getSelectedRow();if(row<0){ClientMain.showError("Select a request.");return;}try{int id=Integer.parseInt(model.getValueAt(row,0).toString().trim());ClientMain.hrmService.approveProfileUpdate(id,ClientMain.sessionToken);ClientMain.showSuccess("Approved!");new Thread(load).start();}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}});
@@ -135,8 +177,8 @@ public class HRPanel extends JPanel {
                 setFont(new Font("Segoe UI",Font.BOLD,11));setBorder(BorderFactory.createEmptyBorder(0,8,0,8));return comp;}});
         panel.add(wrap(table),BorderLayout.CENTER);
         JPanel bp = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0)); bp.setOpaque(false); bp.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
-        JButton ab = ClientMain.styledButton("\u2713 Approve",ClientMain.ACCENT_GREEN); JButton rb = ClientMain.styledButton("\u2717 Reject",ClientMain.ACCENT_RED);
-        JButton rfb = ClientMain.subtleButton("\u21BB Refresh"); bp.add(ab);bp.add(rb);bp.add(rfb); panel.add(bp,BorderLayout.SOUTH);
+        JButton ab = ClientMain.styledButton("Approve",ClientMain.ACCENT_GREEN); JButton rb = ClientMain.styledButton("Reject",ClientMain.ACCENT_RED);
+        JButton rfb = ClientMain.subtleButton("Refresh"); bp.add(ab);bp.add(rb);bp.add(rfb); panel.add(bp,BorderLayout.SOUTH);
         Runnable load = ()->{try{List<LeaveApplication> as=ClientMain.hrmService.getPendingLeaveApplications(ClientMain.sessionToken);SwingUtilities.invokeLater(()->{model.setRowCount(0);for(LeaveApplication la:as)model.addRow(new Object[]{la.getLeaveId(),la.getEmployeeName()!=null?la.getEmployeeName():"Emp#"+la.getEmployeeId(),la.getLeaveType(),la.getStartDate(),la.getEndDate(),la.getDaysRequested(),la.getReason(),la.getStatus()});});}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}};
         new Thread(load).start(); rfb.addActionListener(e->new Thread(load).start());
         ab.addActionListener(e->{int row=table.getSelectedRow();if(row<0){ClientMain.showError("Select a leave.");return;}try{ClientMain.hrmService.approveLeave((int)model.getValueAt(row,0),ClientMain.sessionToken);ClientMain.showSuccess("Approved!");new Thread(load).start();}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}});
@@ -188,9 +230,9 @@ public class HRPanel extends JPanel {
                 double salary=Double.parseDouble(sf.getText().trim());
                 ClientMain.prsService.generatePayroll(eid,month,year,salary,ClientMain.sessionToken);
                 resLabel.setForeground(ClientMain.ACCENT_GREEN);
-                resLabel.setText("\u2713 Payroll generated for emp#"+eid+" "+months[month]+"/"+year);
+                resLabel.setText("Payroll generated for emp#"+eid+" "+months[month]+"/"+year);
             } catch(NumberFormatException ex){ClientMain.showError("Enter valid numbers.");}
-            catch(Exception ex){resLabel.setForeground(ClientMain.ACCENT_RED);resLabel.setText("\u2717 "+ex.getMessage());}
+            catch(Exception ex){resLabel.setForeground(ClientMain.ACCENT_RED);resLabel.setText(ex.getMessage());}
         });
 
         viewBtn.addActionListener(e->{
@@ -216,7 +258,7 @@ public class HRPanel extends JPanel {
         JLabel l1=new JLabel("Employee ID:"); l1.setForeground(ClientMain.FG_SECONDARY); JTextField eidf=ClientMain.styledField(8);
         JLabel l2=new JLabel("Year:"); l2.setForeground(ClientMain.FG_SECONDARY); JTextField yf=ClientMain.styledField(6); yf.setText(String.valueOf(Year.now().getValue()));
         JButton gb=ClientMain.styledButton("Generate Report",ClientMain.ACCENT_PURPLE);
-        JButton saveBtn=ClientMain.styledButton("\u2B73 Save to File",ClientMain.ACCENT_GREEN);
+        JButton saveBtn=ClientMain.styledButton("Save to File",ClientMain.ACCENT_GREEN);
         ib.add(l1);ib.add(eidf);ib.add(l2);ib.add(yf);ib.add(gb);ib.add(saveBtn); panel.add(ib,BorderLayout.NORTH);
 
         JTextArea ra = new JTextArea(); ra.setEditable(false); ra.setBackground(ClientMain.BG_PANEL);
@@ -230,30 +272,30 @@ public class HRPanel extends JPanel {
             int eid=Integer.parseInt(eidf.getText().trim()); int year=Integer.parseInt(yf.getText().trim());
             YearlyReport rpt=ClientMain.hrmService.generateYearlyReport(eid,year,ClientMain.sessionToken);
             StringBuilder sb=new StringBuilder();
-            sb.append("\n  \u2554").append("\u2550".repeat(46)).append("\u2557\n");
-            sb.append("  \u2551         YEARLY EMPLOYEE REPORT - ").append(year).append("         \u2551\n");
-            sb.append("  \u255A").append("\u2550".repeat(46)).append("\u255D\n");
+            sb.append("\n═══════════════════════════════════════════════════════\n");
+            sb.append("           YEARLY EMPLOYEE REPORT - ").append(year).append("           \n");
+            sb.append("═══════════════════════════════════════════════════════\n");
             sb.append("  Generated: ").append(rpt.getGeneratedAt()).append("\n\n");
             Employee emp=rpt.getEmployee();
-            sb.append("  \u250C\u2500\u2500\u2500 EMPLOYEE PROFILE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n");
-            sb.append("  \u2502 Name       : ").append(pad(emp.getFullName(),31)).append("\u2502\n");
-            sb.append("  \u2502 IC/Passport: ").append(pad(emp.getIcPassport(),31)).append("\u2502\n");
-            sb.append("  \u2502 Email      : ").append(pad(emp.getEmail()!=null?emp.getEmail():"N/A",31)).append("\u2502\n");
-            sb.append("  \u2502 Department : ").append(pad(emp.getDepartment()!=null?emp.getDepartment():"N/A",31)).append("\u2502\n");
-            sb.append("  \u2502 Position   : ").append(pad(emp.getPosition()!=null?emp.getPosition():"N/A",31)).append("\u2502\n");
-            sb.append("  \u2514").append("\u2500".repeat(46)).append("\u2518\n\n");
-            sb.append("  \u250C\u2500\u2500\u2500 FAMILY DETAILS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n");
-            if(rpt.getFamilyMembers().isEmpty()) sb.append("  \u2502 No family members on record.                \u2502\n");
-            else for(FamilyMember fm:rpt.getFamilyMembers()) sb.append("  \u2502 ").append(pad(fm.getName()+" ("+fm.getRelationship()+")",44)).append("\u2502\n");
-            sb.append("  \u2514").append("\u2500".repeat(46)).append("\u2518\n\n");
-            sb.append("  \u250C\u2500\u2500\u2500 LEAVE BALANCE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n");
-            for(LeaveBalance lb:rpt.getLeaveBalances()) sb.append("  \u2502 ").append(pad(String.format("%-12s %d/%d used, %d left",lb.getLeaveType(),lb.getUsedDays(),lb.getTotalDays(),lb.getRemainingDays()),44)).append("\u2502\n");
-            sb.append("  \u2514").append("\u2500".repeat(46)).append("\u2518\n\n");
-            sb.append("  \u250C\u2500\u2500\u2500 LEAVE HISTORY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n");
-            if(rpt.getLeaveApplications().isEmpty()) sb.append("  \u2502 No leave applications for ").append(year).append(".               \u2502\n");
-            else{sb.append("  \u2502 ").append(pad(String.format("%-5s %-9s %-11s %-5s %-8s","ID","Type","Start","Days","Status"),44)).append("\u2502\n");
-                for(LeaveApplication la:rpt.getLeaveApplications()) sb.append("  \u2502 ").append(pad(String.format("%-5d %-9s %-11s %-5d %-8s",la.getLeaveId(),la.getLeaveType(),la.getStartDate(),la.getDaysRequested(),la.getStatus()),44)).append("\u2502\n");}
-            sb.append("  \u2514").append("\u2500".repeat(46)).append("\u2518\n");
+            sb.append("--- EMPLOYEE PROFILE ").append("-".repeat(25)).append("\n");
+            sb.append("| Name       : ").append(pad(emp.getFullName(),31)).append("|\n");
+            sb.append("| IC/Passport: ").append(pad(emp.getIcPassport(),31)).append("|\n");
+            sb.append("| Email      : ").append(pad(emp.getEmail()!=null?emp.getEmail():"N/A",31)).append("|\n");
+            sb.append("| Department : ").append(pad(emp.getDepartment()!=null?emp.getDepartment():"N/A",31)).append("|\n");
+            sb.append("| Position   : ").append(pad(emp.getPosition()!=null?emp.getPosition():"N/A",31)).append("|\n");
+            sb.append("").append("-".repeat(46)).append("\n\n");
+            sb.append("--- FAMILY DETAILS ").append("-".repeat(29)).append("\n");
+            if(rpt.getFamilyMembers().isEmpty()) sb.append("| No family members on record.                |\n");
+            else for(FamilyMember fm:rpt.getFamilyMembers()) sb.append("| ").append(pad(fm.getName()+" ("+fm.getRelationship()+")",44)).append("|\n");
+            sb.append("").append("-".repeat(46)).append("\n\n");
+            sb.append("--- LEAVE BALANCE ").append("-".repeat(30)).append("\n");
+            for(LeaveBalance lb:rpt.getLeaveBalances()) sb.append("| ").append(pad(String.format("%-12s %d/%d used, %d left",lb.getLeaveType(),lb.getUsedDays(),lb.getTotalDays(),lb.getRemainingDays()),44)).append("|\n");
+            sb.append("").append("-".repeat(46)).append("\n\n");
+            sb.append("--- LEAVE HISTORY ").append("-".repeat(30)).append("\n");
+            if(rpt.getLeaveApplications().isEmpty()) sb.append("| No leave applications for ").append(year).append(".               |\n");
+            else{sb.append("| ").append(pad(String.format("%-5s %-9s %-11s %-5s %-8s","ID","Type","Start","Days","Status"),44)).append("|\n");
+                for(LeaveApplication la:rpt.getLeaveApplications()) sb.append("| ").append(pad(String.format("%-5d %-9s %-11s %-5d %-8s",la.getLeaveId(),la.getLeaveType(),la.getStartDate(),la.getDaysRequested(),la.getStatus()),44)).append("|\n");}
+            sb.append("").append("-".repeat(46)).append("\n");
             ra.setText(sb.toString()); ra.setCaretPosition(0);
         }catch(NumberFormatException ex){ClientMain.showError("Enter valid ID and Year.");}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}});
 

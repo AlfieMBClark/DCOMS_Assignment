@@ -327,7 +327,7 @@ public class ClientMain {
             BorderFactory.createEmptyBorder(10, 20, 10, 20)));
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); left.setOpaque(false);
-        JLabel dot = new JLabel("\u25CF ");
+        JLabel dot = new JLabel("* ");
         dot.setForeground(accentColor); dot.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         left.add(dot);
         JLabel title = new JLabel(titleText);
@@ -341,7 +341,7 @@ public class ClientMain {
         topBar.add(left, BorderLayout.WEST);
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0)); right.setOpaque(false);
-        JButton pwBtn = subtleButton("\u26BF Change Password");
+        JButton pwBtn = subtleButton("Change Password");
         pwBtn.addActionListener(e -> showChangePasswordDialog());
         right.add(pwBtn);
         JButton logoutBtn = styledButton("Logout", ACCENT_RED);

@@ -33,7 +33,7 @@ public class LoginPanel extends JPanel {
         g.fill = GridBagConstraints.HORIZONTAL;
 
         // Logo icon
-        JLabel icon = new JLabel("\u2B21", SwingConstants.CENTER);  // hexagon
+        JLabel icon = new JLabel("●", SwingConstants.CENTER);  // hexagon
         icon.setFont(new Font("Segoe UI", Font.BOLD, 44));
         icon.setForeground(ClientMain.ACCENT_BLUE);
         g.gridx = 0; g.gridy = 0; g.gridwidth = 2;
@@ -47,7 +47,7 @@ public class LoginPanel extends JPanel {
         card.add(title, g);
 
         // Subtitle
-        JLabel subtitle = new JLabel("Distributed HRM \u2014 Java RMI", SwingConstants.CENTER);
+        JLabel subtitle = new JLabel("Distributed HRM - Java RMI", SwingConstants.CENTER);
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         subtitle.setForeground(ClientMain.FG_DIM);
         g.gridy = 2; g.insets = new Insets(0, 5, 18, 5);
@@ -95,7 +95,7 @@ public class LoginPanel extends JPanel {
 
         // Default credentials hint
         JLabel hint = new JLabel(
-            "<html><center><span style='color:#646878'>admin/admin123 \u2022 hr1/hr1234 \u2022 ahmad.ibrahim/emp123</span></center></html>",
+            "<html><center><span style='color:#646878'>admin/admin123 - hr1/hr1234 - ahmad.ibrahim/emp123</span></center></html>",
             SwingConstants.CENTER);
         hint.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         g.gridy = 9;

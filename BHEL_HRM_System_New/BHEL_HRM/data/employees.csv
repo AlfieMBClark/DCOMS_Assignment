@@ -1,5 +1,5 @@
 employee_id,first_name,last_name,ic_passport,email,phone,department,position,date_joined,is_active
 1,Ahmad,Ibrahim,990101-14-1234,alfieclark2015@gmail.com,+601111111,Engineering,Software Developer,2024-01-15,1
-2,Badr,Abd,B123456,Badr45@gmail.com,0122687341,Manifucturing,secertary,2026-03-15,1
-3,Ten,Khang,510315123456,tvk@gmail.com,+601117743073,HR,Dad,2026-03-16,1
-4,Alfie,Clark,010203-05-6789,ac@bhel.com,+601234567891,Engineering,Supervisor,2026-03-16,1
+2,Badr,Abd,B123456,Badr45@gmail.com,0122687341,Manufacturing,Production Manager,2026-03-15,1
+3,Ten,Khang,510315123456,tvk@gmail.com,+601117743073,Sanitation,Janitor,2026-03-16,1
+4,Alfie,Clark,010203-05-6789,ac@bhel.com,+601234567891,Office,Office Manager,2026-03-16,1

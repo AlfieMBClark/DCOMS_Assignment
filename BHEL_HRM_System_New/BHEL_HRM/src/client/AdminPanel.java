@@ -14,8 +14,8 @@ public class AdminPanel extends JPanel {
         add(ClientMain.createTopBar("Admin Dashboard", ClientMain.ACCENT_PURPLE), BorderLayout.NORTH);
         JTabbedPane tabs = new JTabbedPane();
         tabs.setBackground(ClientMain.BG_PANEL); tabs.setFont(new Font("Segoe UI",Font.BOLD,12));
-        tabs.addTab("  \u2302 User Accounts  ", createUserTab());
-        tabs.addTab("  \u2630 Audit Log  ", createAuditTab());
+        tabs.addTab("  User Accounts  ", createUserTab());
+        tabs.addTab("  Audit Log  ", createAuditTab());
         add(tabs, BorderLayout.CENTER);
     }
 
@@ -49,37 +49,48 @@ public class AdminPanel extends JPanel {
 
         JPanel bp = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0)); bp.setOpaque(false); bp.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
         JButton addBtn=ClientMain.styledButton("+ Add User",ClientMain.ACCENT_GREEN);
-        JButton editBtn=ClientMain.styledButton("\u270E Edit",ClientMain.ACCENT_BLUE);
-        JButton delBtn=ClientMain.styledButton("\u2717 Deactivate",ClientMain.ACCENT_RED);
-        JButton refBtn=ClientMain.subtleButton("\u21BB Refresh");
+        JButton editBtn=ClientMain.styledButton("Edit",ClientMain.ACCENT_BLUE);
+        JButton delBtn=ClientMain.styledButton("Deactivate",ClientMain.ACCENT_RED);
+        JButton refBtn=ClientMain.subtleButton("Refresh");
         bp.add(addBtn);bp.add(editBtn);bp.add(delBtn);bp.add(refBtn); panel.add(bp,BorderLayout.SOUTH);
 
         Runnable load = ()->{try{List<UserAccount> us=ClientMain.hrmService.getAllUsers(ClientMain.sessionToken);SwingUtilities.invokeLater(()->{model.setRowCount(0);for(UserAccount u:us)model.addRow(new Object[]{u.getUserId(),u.getUsername(),u.getRole(),u.getEmployeeId(),u.isActive()?"Yes":"No"});});}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}};
         new Thread(load).start(); refBtn.addActionListener(e->new Thread(load).start());
 
         addBtn.addActionListener(e->{
-            JPanel dp=new JPanel(new GridBagLayout());dp.setBackground(ClientMain.BG_PANEL);dp.setPreferredSize(new Dimension(380,260));
-            GridBagConstraints g=new GridBagConstraints();g.insets=new Insets(3,8,3,8);g.fill=GridBagConstraints.HORIZONTAL;g.gridx=0;g.gridwidth=2;
-            JLabel h=new JLabel("Create User Account");h.setFont(new Font("Segoe UI",Font.BOLD,15));h.setForeground(ClientMain.FG_PRIMARY);g.gridy=0;dp.add(h,g);g.gridwidth=1;
-            JLabel ul=new JLabel("USERNAME");ul.setFont(new Font("Segoe UI",Font.BOLD,10));ul.setForeground(ClientMain.FG_DIM);g.gridy=1;g.gridx=0;dp.add(ul,g);
-            JTextField uf=ClientMain.styledField(16);g.gridy=2;dp.add(uf,g);
-            JLabel pl=new JLabel("PASSWORD (min 6)");pl.setFont(new Font("Segoe UI",Font.BOLD,10));pl.setForeground(ClientMain.FG_DIM);g.gridy=1;g.gridx=1;dp.add(pl,g);
-            JPasswordField pf=ClientMain.styledPasswordField(16);g.gridy=2;dp.add(pf,g);
-            JLabel rl=new JLabel("ROLE");rl.setFont(new Font("Segoe UI",Font.BOLD,10));rl.setForeground(ClientMain.FG_DIM);g.gridy=3;g.gridx=0;dp.add(rl,g);
-            JComboBox<String> rb=new JComboBox<>(new String[]{"EMPLOYEE","HR","ADMIN"});rb.setBackground(ClientMain.BG_INPUT);rb.setForeground(ClientMain.FG_PRIMARY);g.gridy=4;dp.add(rb,g);
-            JLabel el=new JLabel("EMP ID (0 if N/A)");el.setFont(new Font("Segoe UI",Font.BOLD,10));el.setForeground(ClientMain.FG_DIM);g.gridy=3;g.gridx=1;dp.add(el,g);
-            JTextField ef=ClientMain.styledField(8);ef.setText("0");g.gridy=4;dp.add(ef,g);
-            int res=JOptionPane.showConfirmDialog(this,dp,"Add User",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE);
-            if(res==JOptionPane.OK_OPTION){
-                String un=uf.getText().trim();String pw=new String(pf.getPassword());
-                if(un.length()<3){ClientMain.showError("Username must be 3+ chars.");return;}
-                if(pw.length()<6){ClientMain.showError("Password must be 6+ chars.");return;}
-                try{int eid=Integer.parseInt(ef.getText().trim());
-                    ClientMain.hrmService.addUser(un,pw,(String)rb.getSelectedItem(),eid,ClientMain.sessionToken);
-                    ClientMain.showSuccess("User '"+un+"' created!");new Thread(load).start();
-                }catch(NumberFormatException ex){ClientMain.showError("Emp ID must be a number.");}
-                catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}
-            }
+            try {
+                // Get all employees to find the next available ID
+                List<Employee> employees = ClientMain.hrmService.getAllEmployees(ClientMain.sessionToken);
+                int nextEmpId = 1;
+                if (employees != null && !employees.isEmpty()) {
+                    int maxId = employees.stream().mapToInt(Employee::getEmployeeId).max().orElse(0);
+                    nextEmpId = maxId + 1;
+                }
+                final int prefillId = nextEmpId;
+                
+                JPanel dp=new JPanel(new GridBagLayout());dp.setBackground(ClientMain.BG_PANEL);dp.setPreferredSize(new Dimension(380,260));
+                GridBagConstraints g=new GridBagConstraints();g.insets=new Insets(3,8,3,8);g.fill=GridBagConstraints.HORIZONTAL;g.gridx=0;g.gridwidth=2;
+                JLabel h=new JLabel("Create User Account");h.setFont(new Font("Segoe UI",Font.BOLD,15));h.setForeground(ClientMain.FG_PRIMARY);g.gridy=0;dp.add(h,g);g.gridwidth=1;
+                JLabel ul=new JLabel("USERNAME");ul.setFont(new Font("Segoe UI",Font.BOLD,10));ul.setForeground(ClientMain.FG_DIM);g.gridy=1;g.gridx=0;dp.add(ul,g);
+                JTextField uf=ClientMain.styledField(16);g.gridy=2;dp.add(uf,g);
+                JLabel pl=new JLabel("PASSWORD (min 6)");pl.setFont(new Font("Segoe UI",Font.BOLD,10));pl.setForeground(ClientMain.FG_DIM);g.gridy=1;g.gridx=1;dp.add(pl,g);
+                JPasswordField pf=ClientMain.styledPasswordField(16);g.gridy=2;dp.add(pf,g);
+                JLabel rl=new JLabel("ROLE");rl.setFont(new Font("Segoe UI",Font.BOLD,10));rl.setForeground(ClientMain.FG_DIM);g.gridy=3;g.gridx=0;dp.add(rl,g);
+                JComboBox<String> rb=new JComboBox<>(new String[]{"EMPLOYEE","HR","ADMIN"});rb.setBackground(ClientMain.BG_INPUT);rb.setForeground(ClientMain.FG_PRIMARY);g.gridy=4;dp.add(rb,g);
+                JLabel el=new JLabel("EMPLOYEE ID");el.setFont(new Font("Segoe UI",Font.BOLD,10));el.setForeground(ClientMain.FG_DIM);g.gridy=3;g.gridx=1;dp.add(el,g);
+                JTextField ef=ClientMain.styledField(8);ef.setText(String.valueOf(prefillId));ef.setEditable(false);ef.setBackground(ClientMain.BG_CARD);ef.setForeground(ClientMain.FG_DIM);g.gridy=4;dp.add(ef,g);
+                int res=JOptionPane.showConfirmDialog(this,dp,"Add User",JOptionPane.OK_CANCEL_OPTION,JOptionPane.PLAIN_MESSAGE);
+                if(res==JOptionPane.OK_OPTION){
+                    String un=uf.getText().trim();String pw=new String(pf.getPassword());
+                    if(un.length()<3){ClientMain.showError("Username must be 3+ chars.");return;}
+                    if(pw.length()<6){ClientMain.showError("Password must be 6+ chars.");return;}
+                    try{int eid=Integer.parseInt(ef.getText().trim());
+                        ClientMain.hrmService.addUser(un,pw,(String)rb.getSelectedItem(),eid,ClientMain.sessionToken);
+                        ClientMain.showSuccess("User '"+un+"' created!");new Thread(load).start();
+                    }catch(NumberFormatException ex){ClientMain.showError("Emp ID must be a number.");}
+                    catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}
+                }
+            } catch (Exception ex) { ClientMain.showError("Error fetching employee data: " + ex.getMessage()); }
         });
 
         editBtn.addActionListener(e->{int row=table.getSelectedRow();if(row<0){ClientMain.showError("Select a user.");return;}
@@ -116,7 +127,7 @@ public class AdminPanel extends JPanel {
                 setFont(new Font("Segoe UI",Font.BOLD,11));setBorder(BorderFactory.createEmptyBorder(0,8,0,8));return comp;}});
         panel.add(wrap(table),BorderLayout.CENTER);
         JPanel bp=new JPanel(new FlowLayout(FlowLayout.LEFT,8,0));bp.setOpaque(false);bp.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
-        JButton rfb=ClientMain.styledButton("\u21BB Refresh",ClientMain.ACCENT_BLUE);bp.add(rfb);panel.add(bp,BorderLayout.SOUTH);
+        JButton rfb=ClientMain.styledButton("Refresh",ClientMain.ACCENT_BLUE);bp.add(rfb);panel.add(bp,BorderLayout.SOUTH);
         Runnable load=()->{try{List<AuditLogEntry> es=ClientMain.hrmService.getAuditLog(ClientMain.sessionToken);SwingUtilities.invokeLater(()->{model.setRowCount(0);for(int i=es.size()-1;i>=0;i--){AuditLogEntry en=es.get(i);model.addRow(new Object[]{en.getLogId(),en.getTimestamp(),en.getUsername(),en.getRole(),en.getAction(),en.getDetails()});}});}catch(Exception ex){ClientMain.showError("Error: "+ex.getMessage());}};
         new Thread(load).start(); rfb.addActionListener(e->new Thread(load).start());
         return panel;
