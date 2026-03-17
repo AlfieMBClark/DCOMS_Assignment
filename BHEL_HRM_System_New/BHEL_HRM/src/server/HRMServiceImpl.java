@@ -361,6 +361,15 @@ public class HRMServiceImpl extends UnicastRemoteObject implements HRMService {
         if (dbService.getUserByUsername(username) != null)
             throw new RemoteException("Username already exists: " + username);
 
+        // Ensure employee exists before linking user to it. Prevents admins
+        // from guessing/pre-allocating employee IDs which can collide with
+        // HR-created employees (avoids duplicate employee_id usage).
+        if ("EMPLOYEE".equals(role)) {
+            if (employeeId <= 0 || dbService.getEmployee(employeeId) == null) {
+                throw new RemoteException("Employee not found: " + employeeId + ". Register the employee first via HR.");
+            }
+        }
+
         String hash = PasswordHasher.hashPassword(password);
         int userId = dbService.addUser(new UserAccount(0, username, hash, role, employeeId, true));
         auditLogger.log(admin, "ADD_USER", "users", userId, "Created user: " + username + " [" + role + "]");
