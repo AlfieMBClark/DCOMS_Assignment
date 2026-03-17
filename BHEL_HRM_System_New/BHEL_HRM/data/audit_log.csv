@@ -157,6 +157,30 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 156,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-16T22:05:31.999299400
 157,2,hr1,HR,REGISTER_EMPLOYEE,employees,4,"Alfie Clark (IC: 010203-05-6789), user: alfie.clark",2026-03-16T22:09:19.331136500
 158,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-16T22:13:38.828766500
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+159,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [STANDALONE / BACKUP],2026-03-17T14:37:06.044022600
+160,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-17T14:37:08.537554700
+161,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-17T14:39:05.464537600
+162,2,hr1,HR,GENERATE_PAYROLL,payroll_records,3,emp#1 3/2026: RM3500.0 -> RM3090.5,2026-03-17T14:43:07.468005900
+163,2,hr1,HR,GENERATE_PAYROLL,payroll_records,4,emp#1 4/2026: RM0.0 -> RM0.0,2026-03-17T14:49:17.440222600
+164,2,hr1,HR,GENERATE_PAYROLL,payroll_records,5,emp#999 3/2026: RM3500.0 -> RM3090.5,2026-03-17T14:53:18.828348600
+165,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-17T14:54:17.480932200
+166,0,hr,UNKNOWN,FAILED_LOGIN,users,0,Failed login attempt for: hr,2026-03-17T14:54:23.716071700
+167,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-17T14:54:33.602106
+168,2,hr1,HR,GENERATE_PAYROLL,payroll_records,6,emp#9 1/2026: RM3500.0 -> RM3090.5,2026-03-17T14:54:44.668699300
+169,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-17T14:59:07.996838400
+170,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [STANDALONE / BACKUP],2026-03-17T14:59:49.337561400
+171,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-17T14:59:51.483048900
+172,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-17T15:00:01.765995800
+173,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-17T15:01:31.926026500
+174,3,ahmad.ibrahim,EMPLOYEE,LOGIN,users,3,User logged in,2026-03-17T15:01:42.845541500
+175,3,ahmad.ibrahim,EMPLOYEE,LOGOUT,users,3,User logged out,2026-03-17T15:08:01.210236200
+176,2,hr1,HR,LOGIN,users,2,User logged in,2026-03-17T15:08:06.815862100
+177,2,hr1,HR,LOGOUT,users,2,User logged out,2026-03-17T15:42:11.145315800
+=======
+>>>>>>> Stashed changes
 159,0,SYSTEM,SYSTEM,DB_SERVER_START,,0,Database server started on port 1098 [STANDALONE / BACKUP],2026-03-17T14:26:58.799402700
 160,0,SYSTEM,SYSTEM,SERVER_START,,0,Application server started on port 1099,2026-03-17T14:27:01.604700800
 161,3,ahmad.ibrahim,EMPLOYEE,LOGIN,users,3,User logged in,2026-03-17T14:27:19.100204100
@@ -226,3 +250,7 @@ log_id,user_id,username,role,action,target_table,target_id,details,timestamp
 225,1,admin,ADMIN,LOGOUT,users,1,User logged out,2026-03-17T15:09:47.426038400
 226,7,che.adams,HR,LOGIN,users,7,User logged in,2026-03-17T15:09:53.324654700
 227,7,che.adams,HR,LOGOUT,users,7,User logged out,2026-03-17T15:09:58.900045800
+<<<<<<< Updated upstream
+=======
+>>>>>>> cfef653cad55f16d1943f2456375c048d67fbe70
+>>>>>>> Stashed changes
